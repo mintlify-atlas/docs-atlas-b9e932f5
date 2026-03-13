@@ -1,0 +1,714 @@
+---
+title: 'Best Practices'
+description: 'Design patterns and optimization techniques for OpenSquad'
+icon: 'star'
+---
+
+This guide compiles best practices for designing effective squads and agents, drawn from OpenSquad's built-in best-practices library and the Architect's core principles.
+
+## Squad Design Principles
+
+### YAGNI — Never Create Unnecessary Agents
+
+**Principle:** Each agent must have exactly one clear responsibility. Never add agents "just in case."
+
+<Tip>
+  **Good:** A squad with Researcher → Writer → Reviewer (3 agents, each essential)
+
+  **Bad:** A squad with Researcher → Analyst → Strategist → Ideator → Writer → Editor → Reviewer → Publisher (8 agents, overlapping responsibilities)
+</Tip>
+
+**Application:**
+- Start with the minimum viable pipeline
+- Combine roles when they naturally belong together
+- Add agents only when the previous pipeline demonstrably fails
+
+**Example Refactor:**
+
+```yaml
+# Before: 5 agents
+pipeline:
+  - researcher      # Gathers data
+  - analyst         # Interprets data
+  - strategist      # Decides angle
+  - writer          # Creates content
+  - reviewer        # Checks quality
+
+# After: 3 agents
+pipeline:
+  - researcher      # Gathers AND interprets data
+  - writer          # Decides angle AND creates content
+  - reviewer        # Checks quality
+```
+
+Result: Fewer handoffs, faster execution, same output quality.
+
+---
+
+### Each Agent Must Have One Clear Responsibility
+
+**Principle:** Agents with blurred boundaries produce inconsistent results. Define exactly what each agent does and what they don't do.
+
+**Bad Example:**
+
+```yaml
+agent:
+  name: Content Producer
+  responsibilities:
+    - Research the topic
+    - Generate ideas
+    - Write the content
+    - Design visuals
+    - Review quality
+```
+
+This agent tries to do everything. When it fails, you can't tell which responsibility failed.
+
+**Good Example:**
+
+```yaml
+agent:
+  name: Instagram Copywriter
+  responsibilities:
+    - Write carousel slide copy
+    - Generate hooks from angles
+    - Adapt tone to brand voice
+  does_not_do:
+    - Research (handled by Researcher)
+    - Design (handled by Designer)
+    - Review (handled by Reviewer)
+```
+
+Clear boundaries = predictable behavior.
+
+---
+
+### Checkpoints at Every User Decision Point
+
+**Principle:** Never make a creative or strategic decision on behalf of the user. Pause and ask.
+
+**Required Checkpoints:**
+
+1. **Before research:** Topic and time range selection
+2. **After research:** News story selection (when multiple stories found)
+3. **After angle generation:** Angle selection
+4. **After content creation:** Content approval (before rendering/publishing)
+5. **After review:** Final approval or rejection loop
+
+**Example Pipeline:**
+
+```yaml
+steps:
+  - step-01-research-focus         # CHECKPOINT: user provides topic
+  - step-02-research               # Researcher gathers data
+  - step-03-news-selection         # CHECKPOINT: user picks story
+  - step-04-generate-angles        # Writer creates 5 angles
+  - step-05-angle-selection        # CHECKPOINT: user picks angle
+  - step-06-create-content         # Writer drafts content
+  - step-07-content-approval       # CHECKPOINT: approve before rendering
+  - step-08-render-images          # Designer creates visuals
+  - step-09-review                 # Reviewer scores quality
+  - step-10-final-approval         # CHECKPOINT: approve or send back
+```
+
+<Warning>
+  **Never place an execution step (image generation, publishing, distribution) immediately after a creation step without a checkpoint in between.**
+
+  ❌ Bad: `[Writer] → [Designer] → [Checkpoint]`
+
+  ✅ Good: `[Writer] → [Checkpoint] → [Designer]`
+</Warning>
+
+---
+
+### Default to the Simplest Pipeline
+
+**Principle:** Complexity is a maintenance cost. The best squad is the simplest one that gets the job done.
+
+**Optimization Heuristic:**
+
+Start with:
+```
+Research → Create → Review
+```
+
+Only add steps when:
+- The user explicitly requests a specific workflow
+- A single-pass approach demonstrably fails (e.g., content quality is below threshold)
+- Multiple formats require parallel creation
+
+**When NOT to add complexity:**
+- "It might be useful someday"
+- "This is how I would do it manually"
+- "More agents = better output" (often false)
+
+---
+
+## Agent Design Patterns
+
+### Deep Agents vs. Shallow Agents
+
+OpenSquad uses **deep agents** — agents with rich persona, principles, operational framework, and quality criteria.
+
+**Deep Agent Structure:**
+
+```markdown
+# Agent Name
+
+## Persona
+- Role: What they do and why they exist
+- Identity: How they think and approach problems
+- Communication Style: How they present their work
+
+## Principles
+- 6+ domain-specific rules (not generic platitudes)
+
+## Operational Framework
+- 5+ concrete steps with decision criteria
+
+## Voice Guidance
+- Vocabulary to use and avoid
+- Tone rules specific to their domain
+
+## Output Examples
+- 2 complete, realistic examples (not templates)
+
+## Anti-Patterns
+- 4+ "Never Do" items with explanations
+- 3+ "Always Do" items
+
+## Quality Criteria
+- Measurable, checkable criteria
+
+## Integration
+- What they read, write, and depend on
+```
+
+**Why Deep Agents?**
+
+- Shallow agents produce generic output
+- Deep agents encode domain expertise
+- Quality is embedded in the agent definition, not in step-by-step micromanagement
+
+---
+
+### Research Agents: Verification Over Speed
+
+From `_opensquad/core/best-practices/researching.md`:
+
+**Core Principles:**
+
+1. **Source verification first** — Never include a finding without at least one additional independent source
+2. **Freshness bias** — Prefer recent sources for time-sensitive topics
+3. **Primary over secondary** — Original reports > blog aggregations
+4. **Structured output** — Every brief follows the same format: Key Findings, Trending Angles, Sources, Recommendations, Gaps
+5. **Contradiction surfacing** — When sources disagree, present both sides
+
+**Quality Criteria:**
+
+```yaml
+- All findings cite source URLs and access dates
+- Confidence levels (high/medium/low) assigned to every finding
+- At least 2 independent sources corroborate high-confidence findings
+- Gaps section is populated (even if minor)
+- Recommendations are actionable and grounded
+- No opinions presented as facts
+```
+
+**Tool Selection:**
+
+- Use `WebSearch` / `web_fetch` for public pages (fast, headless)
+- Use Playwright MCP only for:
+  - Social media platforms (Instagram, Twitter/X, LinkedIn)
+  - Login-required pages
+  - Dynamic content requiring JavaScript execution
+  - Visual screenshot extraction
+
+<Tip>
+  **Default to native search. Escalate to browser automation only when native tools cannot access the content.**
+</Tip>
+
+---
+
+### Copywriter Agents: Hook-First Writing
+
+From `_opensquad/core/best-practices/copywriting.md`:
+
+**Core Principles:**
+
+1. **Hook-first writing** — The first line decides everything. Spend 50% of creative energy on the hook.
+2. **Platform-aware constraints** — Instagram: 125 chars before fold. LinkedIn: line breaks for readability. X: 280 chars.
+3. **Emotional resonance before logic** — People decide with emotion, justify with logic.
+4. **CTA in every piece** — No copy leaves without a clear call-to-action.
+5. **Hook-first selection** — Present 3 hook options before writing the body. User chooses, body follows.
+
+**Pre-Writing Diagnosis (MANDATORY):**
+
+Before drafting any copy, identify:
+
+1. **Awareness Level** (Eugene Schwartz):
+   - Unaware / Problem Aware / Solution Aware / Product Aware / Most Aware
+2. **Market Sophistication Level**:
+   - Stage 1 (first to market) → Stage 5 (identity-based)
+3. **Big Idea**:
+   - Enemy / New Mechanism / Unique Promise / Core Belief to Attack
+4. **Dominant Psychological Driver** (choose ONE):
+   - Fear of loss / Desire for status / Belonging / Freedom / Security / Achievement / Control
+
+**Hook Creation Workflow:**
+
+```markdown
+## Phase 1: Hook Selection
+
+Present 3 hooks using different psychological drivers AND structural types:
+
+**Hook A (Contrarian):** "Stop exercising to lose weight..."
+Rationale: Creates cognitive dissonance...
+
+**Hook B (Statistic):** "200 clients. 8kg average in 12 weeks..."
+Rationale: Leads with proof and specificity...
+
+**Hook C (Question):** "What if the reason you can't lose weight..."
+Rationale: Open-loop question that demands resolution...
+
+→ User selects Hook A
+
+## Phase 2: Body Drafting
+
+With confirmed hook, write the body following the selected framework (AIDA / PAS / BAB / 4Ps).
+```
+
+**Anti-Patterns:**
+
+- ❌ Never start with clichés ("In today's world...", "Did you know...?")
+- ❌ Never write walls of text (3+ lines on mobile = wall)
+- ❌ Never use passive voice in CTAs ("can be downloaded" → "download now")
+- ❌ Never write body before hook is confirmed
+
+---
+
+### Reviewer Agents: Objective Criteria, Not Personal Preference
+
+From `_opensquad/core/best-practices/review.md`:
+
+**Core Principles:**
+
+1. **Evaluate against defined criteria, never personal preference**
+2. **Every score requires specific justification** — "6/10 because..." not just "6/10"
+3. **Provide actionable suggestions** — "Improve tone" is not feedback. "Rewrite para 4 to use active verbs" is feedback.
+4. **Enforce hard rejection triggers** — Any criterion below 4/10 = automatic REJECT
+5. **Separate blocking from non-blocking feedback**
+
+**Decision Rules:**
+
+| Condition | Verdict |
+|---|---|
+| Overall ≥ 7/10, no criterion < 4/10 | APPROVE |
+| Overall ≥ 7/10, non-critical between 4-6/10 | CONDITIONAL APPROVE |
+| Overall < 7/10 | REJECT |
+| Any criterion < 4/10 | REJECT (hard trigger) |
+| 3+ revision cycles with same issues | ESCALATE |
+
+**Review Format:**
+
+```markdown
+==============================
+ REVIEW VERDICT: APPROVE/REJECT
+==============================
+
+Content: [title]
+Type: [type]
+Revision: [N of 3]
+
+------------------------------
+ SCORING TABLE
+------------------------------
+| Criterion | Score | Summary |
+|-----------|-------|----------|
+| ... | 8/10 | ... |
+
+OVERALL: 7.5/10
+
+DETAILED FEEDBACK:
+
+Strength: [what is good and why]
+
+Required change: [what, where, how to fix]
+
+Suggestion (non-blocking): [optional improvements]
+
+VERDICT: [APPROVE/REJECT with path to approval]
+```
+
+**Anti-Patterns:**
+
+- ❌ Never approve without reading thoroughly (no rubber-stamping)
+- ❌ Never give only positive feedback (even approved content has suggestions)
+- ❌ Never say "good" without explaining what is specifically good
+- ❌ Never reject without providing actionable fixes
+
+---
+
+## Performance Modes
+
+### Alta Performance vs. Econômico
+
+When creating a squad, the Architect asks for a performance mode:
+
+**Alta Performance:**
+- 3-5 tasks per agent
+- Platform-specific creators (Instagram Creator, LinkedIn Creator, etc.)
+- Dedicated optimization tasks separate from creation
+- Full review with separate scoring and feedback tasks
+- A/B variant generation
+- **Token cost:** High (multiple optimization passes, detailed review)
+
+**Econômico:**
+- 1-2 tasks per agent
+- Single generic creator (or one main format only)
+- Optimization embedded in creation task
+- Lightweight single-pass review
+- **Token cost:** Low (fewer steps, combined tasks)
+
+**When to Use Each:**
+
+| Use Alta Performance | Use Econômico |
+|---|---|
+| Production content for clients | Internal experiments |
+| High-stakes launches | Rapid prototyping |
+| Multi-platform campaigns | Single-format output |
+| Quality > speed | Speed > perfection |
+
+---
+
+## Task-Based Agent Execution
+
+OpenSquad supports **task decomposition** for agents — breaking a complex agent into granular, reusable tasks.
+
+### When to Use Tasks
+
+**Use tasks when:**
+- Agent has 3+ distinct steps in their operational framework
+- Each step produces intermediate output used by the next
+- You want to reuse steps across agents (e.g., "rank-stories.md" used by multiple researchers)
+
+**Don't use tasks when:**
+- Agent does a single, atomic operation (e.g., a checkpoint)
+- The agent's work is creative and holistic (tasks feel artificial)
+
+### Task File Structure
+
+```markdown
+---
+task: "Task Name"
+order: 1
+input: |
+  - field_name: Description
+output: |
+  - field_name: Description
+---
+
+# Task Name
+
+[Concise description]
+
+## Process
+1. [Concrete step]
+2. [Step with decision points]
+3. [Step with expected output]
+
+## Output Format
+```yaml
+field: "..."
+```
+
+## Output Example
+[Complete, realistic example — 15+ lines]
+
+## Quality Criteria
+- [ ] [Criterion]
+
+## Veto Conditions
+Reject if:
+1. [Condition]
+```
+
+**Agent Frontmatter:**
+
+```yaml
+tasks:
+  - tasks/find-news.md
+  - tasks/rank-stories.md
+```
+
+The Pipeline Runner executes tasks sequentially, piping output from one to the next.
+
+---
+
+## Format System
+
+OpenSquad has a **format injection system** for platform-specific content creation.
+
+### How It Works
+
+1. **Define format in step frontmatter:**
+
+```yaml
+---
+execution: subagent
+agent: instagram-creator
+format: instagram-feed     # ← Injects _opensquad/core/best-practices/instagram-feed.md
+outputFile: squads/{code}/output/carousel.md
+---
+```
+
+2. **Pipeline Runner auto-injects the format file** into the agent's context before execution.
+
+3. **Agent receives platform-specific guidance** without it being hardcoded in the agent definition or step file.
+
+### Benefits
+
+- **Separation of concerns:** Agent defines *how to write*. Format defines *platform rules*.
+- **Reusability:** Same agent can target multiple formats with different steps.
+- **Maintainability:** Update platform best practices in one place.
+
+### Available Formats
+
+See `_opensquad/core/best-practices/_catalog.yaml` for the full list:
+
+- `instagram-feed`, `instagram-reels`, `instagram-stories`
+- `linkedin-post`, `linkedin-article`
+- `twitter-post`, `twitter-thread`
+- `youtube-script`, `youtube-shorts`
+- `email-newsletter`, `email-sales`
+- `blog-post`, `blog-seo`
+- `whatsapp-broadcast`
+
+---
+
+## Common Patterns
+
+### Content Creation Squad (News-Based)
+
+```yaml
+steps:
+  - Research Focus Checkpoint       # User provides topic + time range
+  - Research                        # Researcher finds 3-5 stories
+  - News Selection Checkpoint       # User picks ONE story
+  - Generate Angles                 # Creator generates 5 angles from selected story
+  - Angle Selection Checkpoint      # User picks ONE angle
+  - Create Content                  # Creator writes content using selected angle
+  - Content Approval Checkpoint     # User approves before rendering
+  - Render Images                   # Designer creates visuals
+  - Review                          # Reviewer scores quality
+  - Final Approval Checkpoint       # User approves or loops back
+```
+
+**Key Decisions:**
+
+- News selection happens BEFORE angle generation (angle = lens on ONE story, not multiple stories)
+- Angle selection happens BEFORE content creation (the chosen angle anchors the entire piece)
+- Content approval happens BEFORE rendering (never render unapproved content)
+
+### Data Analysis Squad
+
+```yaml
+steps:
+  - Upload Data Checkpoint          # User provides file or source
+  - Analyze Data                    # Analyst extracts insights
+  - Generate Recommendations        # Strategist creates action items
+  - Review Findings                 # Reviewer checks for accuracy
+  - Final Report Approval           # User approves or requests changes
+```
+
+**Key Decisions:**
+
+- No angle selection (data analysis is objective, not editorial)
+- Analyst and Strategist are separate (interpretation ≠ recommendations)
+- Review focuses on data accuracy, not creative quality
+
+---
+
+## Optimization Techniques
+
+### Reduce Review Cycles with Veto Conditions
+
+**Problem:** Content goes to Reviewer, gets rejected, loops back to Writer. Wastes tokens on obvious issues.
+
+**Solution:** Add **veto conditions** to creation steps. The agent self-checks before completing.
+
+**Example:**
+
+```markdown
+## Veto Conditions
+
+Reject and redo if ANY are true:
+1. Any slide exceeds 30 words
+2. No CTA present in final slide
+3. Hook does not appear in first slide
+4. Missing source citations
+```
+
+Pipeline Runner enforces these **before** the Reviewer sees the content. Obvious failures are caught early.
+
+---
+
+### Parallel Execution for Multi-Platform Squads
+
+**Pattern:** When creating content for multiple platforms simultaneously:
+
+```yaml
+steps:
+  - step-01-research
+  - step-02-angle-selection
+  # These 3 run in parallel (all execution: subagent)
+  - step-03-create-instagram
+  - step-04-create-linkedin
+  - step-05-create-twitter
+  # Review all outputs together
+  - step-06-review
+```
+
+Pipeline Runner dispatches subagents in parallel when steps don't depend on each other.
+
+**Result:** 3x faster execution than sequential.
+
+---
+
+### Output Path Versioning
+
+Pipeline Runner automatically versions outputs:
+
+```
+squads/carousel/output/2026-03-03-143022/slides/v1/draft.md
+squads/carousel/output/2026-03-03-143022/slides/v2/draft.md  ← After revision
+squads/carousel/output/2026-03-03-143022/slides/v3/draft.md  ← After 2nd revision
+```
+
+**Benefits:**
+
+- Every revision is preserved
+- Easy to compare versions
+- Rollback to previous version if needed
+- Run history is self-documenting
+
+**Usage:**
+
+No configuration needed — this is automatic. All outputs to `squads/{name}/output/` are versioned.
+
+---
+
+## Anti-Patterns to Avoid
+
+### ❌ The "Swiss Army Knife" Agent
+
+**What it looks like:**
+
+```yaml
+agent:
+  name: Content Producer
+  responsibilities:
+    - Research
+    - Strategy
+    - Writing
+    - Design
+    - Review
+```
+
+**Why it fails:**
+
+When quality drops, you can't tell which responsibility failed. The agent becomes a black box.
+
+**Fix:**
+
+Split into 3-5 agents with clear boundaries.
+
+---
+
+### ❌ Skipping Checkpoints to "Save Time"
+
+**What it looks like:**
+
+```yaml
+steps:
+  - research
+  - generate-angles      # No checkpoint — agent picks for user
+  - create-content       # No checkpoint — renders immediately
+  - publish              # User sees output only after it's live
+```
+
+**Why it fails:**
+
+User has no control. If the agent picks a bad angle, the entire run is wasted.
+
+**Fix:**
+
+Add checkpoints at every decision point:
+```yaml
+- research
+- angle-selection-checkpoint
+- create-content
+- content-approval-checkpoint
+- publish
+```
+
+---
+
+### ❌ Generic Agent Definitions
+
+**What it looks like:**
+
+```markdown
+## Principles
+- Write high-quality content
+- Be creative
+- Follow best practices
+- Deliver on time
+```
+
+These could apply to ANY agent. No domain expertise.
+
+**Fix:**
+
+Use domain-specific, actionable principles:
+```markdown
+## Principles
+- Hook-first writing: 50% of creative energy on the first line
+- Platform-aware constraints: Instagram fold at 125 chars
+- Present 3 hooks before body: user chooses, body follows
+- CTA intensity matches funnel stage: awareness = soft, conversion = hard
+```
+
+---
+
+## Measuring Squad Quality
+
+### Output Quality Indicators
+
+- **Review approval rate:** Greater than 80% first-pass approvals = well-designed agents
+- **Veto trigger rate:** Less than 10% veto triggers = good self-checking
+- **User rejection rate at checkpoints:** Less than 20% = agents understand user preferences
+
+### Efficiency Indicators
+
+- **Average steps per squad run:** Fewer is better (unless quality suffers)
+- **Token usage per output:** Track over time; should stabilize or decrease as agents learn
+- **Time to completion:** Parallel execution should be faster than sequential
+
+### Iteration Indicators
+
+- **Number of revision cycles:** More than 3 cycles = design problem (agent or criteria)
+- **Recurring feedback themes:** Same issue across runs = update agent definition
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Resolve common issues and debug squad failures
+  </Card>
+  <Card title="IDE Integration" icon="laptop-code" href="/advanced/ide-integration">
+    Configure OpenSquad for your IDE environment
+  </Card>
+</CardGroup>

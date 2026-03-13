@@ -1,0 +1,632 @@
+---
+title: "SKILL.md Format"
+description: "Skill definition file format for MCP integrations, scripts, and behavioral prompts"
+---
+
+# SKILL.md Format
+
+Skill files define reusable capabilities that can be injected into agent context. Skills can be MCP integrations, custom scripts, hybrid combinations, or pure behavioral prompts.
+
+## File Location
+
+```
+skills/{skill-name}/SKILL.md
+```
+
+## Skill Types
+
+OpenSquad supports four skill types:
+
+1. **MCP** — Connects to external APIs via MCP server (e.g., Canva, Apify, Playwright)
+2. **Script** — Runs custom scripts (Node.js, Python, Bash)
+3. **Hybrid** — Combines MCP and script components
+4. **Prompt** — Pure behavioral instructions (no external integration)
+
+## Complete Examples
+
+### MCP Skill (HTTP Transport)
+
+```markdown
+---
+name: canva
+description: >
+  Create, search, autofill, and export designs from Canva.
+  Enables agents to generate visual content, fill templates
+  with brand assets, and export in various formats.
+description_pt-BR: >
+  Crie, busque, preencha e exporte designs do Canva.
+  Permite que agentes gerem conteúdo visual, preencham templates
+  com assets da marca e exportem em diversos formatos.
+type: mcp
+version: "1.0.0"
+mcp:
+  server_name: canva
+  transport: http
+  url: "https://mcp.canva.com/mcp"
+categories: [design, ui, assets, automation]
+---
+
+# Canva Connect
+
+## When to use
+
+Use Canva when you need to create, search, or export visual designs. This skill connects to the user's Canva account via OAuth and enables agents to generate presentations, social media posts, logos, and other visual content.
+
+## Instructions
+
+You have access to Canva through the Canva Connect MCP server.
+
+### Key capabilities
+
+- Create new designs (presentations, social posts, logos, etc.)
+- Autofill templates with content (text, images, brand elements)
+- Search existing designs in the user's Canva account
+- Export designs as PDF or image files
+
+### Best practices
+
+- Use templates when possible — faster and more on-brand
+- When autofilling, match content to template placeholder names
+- Export in the format most useful for the pipeline (PNG for social, PDF for documents)
+- Respect the user's Canva plan limitations (some features require paid plans)
+
+### Requirements
+
+- User needs a Canva account (free or paid)
+- OAuth authorization is required on first use (browser popup)
+- Autofill templates require a Canva paid plan
+
+## Available operations
+
+- **Create Design** — Generate new designs from scratch or templates
+- **Search Designs** — Find existing designs in the user's Canva account
+- **Autofill Template** — Fill template placeholders with text, images, and brand elements
+- **Export Design** — Export designs as PDF, PNG, JPG, or other formats
+- **Browse Templates** — Search Canva's template library for the right starting point
+```
+
+### MCP Skill (stdio Transport)
+
+```markdown
+---
+name: apify
+description: >
+  Web scraping and automation platform. Extract data from any website,
+  run pre-built scrapers (Actors), and automate web workflows using
+  thousands of ready-made tools from the Apify Store.
+type: mcp
+version: "1.0.0"
+mcp:
+  server_name: apify
+  command: npx
+  args: ["-y", "@apify/actors-mcp-server@latest"]
+env:
+  - APIFY_TOKEN
+categories: [scraping, data, automation]
+---
+
+# Apify Web Scraper
+
+## When to use
+
+Use Apify when you need to extract data from websites, scrape social media profiles, run search engine queries, or automate web data collection workflows.
+
+## Instructions
+
+You have access to Apify tools for web scraping and data extraction.
+
+### Key capabilities
+
+- Use Apify Actors (pre-built scrapers) to extract data from websites
+- Popular Actors: web-scraper, instagram-scraper, google-search-scraper, youtube-scraper
+- Each Actor has its own input schema -- check documentation before running
+
+### Best practices
+
+- Start with the simplest Actor that meets the need
+- Use `maxItems` to limit results and avoid excessive costs
+- Check Actor pricing before running (some have per-result costs)
+- Parse results and extract only the fields you need
+
+## Available operations
+
+- **Run Actor** — Execute any Apify Actor with custom input parameters
+- **Web Scraping** — Extract structured data from any website
+- **Social Media Scraping** — Scrape profiles, posts, and engagement data
+- **Search Scraping** — Run search queries and collect results
+- **Data Export** — Retrieve scraped datasets in JSON format
+```
+
+### Script Skill
+
+```markdown
+---
+name: data-transformer
+description: >
+  Transform CSV/JSON data between formats, clean datasets,
+  and perform batch operations using Python scripts.
+type: script
+version: "1.0.0"
+script:
+  runtime: python
+  dependencies:
+    - pandas
+    - openpyxl
+  command: python scripts/transform.py
+categories: [data, automation]
+---
+
+# Data Transformer
+
+## When to use
+
+Use this skill when you need to convert data formats, clean messy datasets, or perform batch transformations that are tedious to do manually.
+
+## Instructions
+
+### Available Scripts
+
+**scripts/transform.py** — Convert between CSV, JSON, Excel formats
+
+Usage:
+```bash
+python scripts/transform.py input.csv output.json --format json
+python scripts/transform.py data.json report.xlsx --format excel
+```
+
+**scripts/clean.py** — Remove duplicates, handle missing values, standardize formats
+
+Usage:
+```bash
+python scripts/clean.py messy-data.csv clean-data.csv --remove-duplicates --fill-missing
+```
+
+### Best practices
+
+- Always validate input files exist before running scripts
+- Preview first few rows before processing large datasets
+- Keep backups of original data before transformations
+- Use `--dry-run` flag to preview changes
+
+## Output format
+
+All scripts write results to the specified output path and print a summary:
+
+```
+Transformation complete:
+- Input: 1,234 rows
+- Output: 1,200 rows (34 duplicates removed)
+- Format: JSON
+- Saved to: output/clean-data.json
+```
+```
+
+### Hybrid Skill
+
+```markdown
+---
+name: video-analyzer
+description: >
+  Download videos, extract transcripts, and analyze content using
+  yt-dlp (script) and Whisper API (MCP).
+type: hybrid
+version: "1.0.0"
+mcp:
+  server_name: openai
+  command: npx
+  args: ["-y", "@openai/mcp-server@latest"]
+script:
+  runtime: bash
+  dependencies:
+    - yt-dlp
+    - ffmpeg
+  command: bash scripts/download.sh
+env:
+  - OPENAI_API_KEY
+categories: [video, transcription, analysis]
+---
+
+# Video Analyzer
+
+## When to use
+
+Use when you need to analyze video content: download videos, extract audio, generate transcripts, and analyze spoken content.
+
+## Instructions
+
+### Workflow
+
+1. **Download video** using yt-dlp script
+2. **Extract audio** to WAV format
+3. **Transcribe** using Whisper API (MCP)
+4. **Analyze** transcript for insights
+
+### Step 1: Download Video
+
+```bash
+bash scripts/download.sh <video-url> output/video.mp4
+```
+
+### Step 2: Extract Audio
+
+```bash
+ffmpeg -i output/video.mp4 -vn -acodec pcm_s16le -ar 16000 output/audio.wav
+```
+
+### Step 3: Transcribe
+
+Use the OpenAI MCP server's Whisper tool:
+- Input: `output/audio.wav`
+- Output: `output/transcript.txt`
+
+### Step 4: Analyze
+
+Read the transcript and extract key points, themes, or quotes.
+
+## Best practices
+
+- Check video duration before downloading (long videos are expensive to transcribe)
+- Use `--format best[height<=720]` for yt-dlp to save bandwidth
+- Split long audio files (>25MB) before sending to Whisper
+- Cache transcripts to avoid re-transcribing the same content
+```
+
+### Prompt Skill
+
+```markdown
+---
+name: seo-optimizer
+description: >
+  Optimize content for search engines using proven SEO frameworks,
+  keyword research patterns, and on-page optimization techniques.
+type: prompt
+version: "1.0.0"
+categories: [content, seo, marketing]
+---
+
+# SEO Optimizer
+
+## When to use
+
+Use this skill when writing blog posts, landing pages, or any content that needs to rank in search engines. Injects SEO best practices into agent behavior.
+
+## Instructions
+
+You are writing content optimized for search engines. Follow these SEO principles:
+
+### Keyword Strategy
+
+1. **Primary keyword** — Use exactly once in:
+   - Page title (H1)
+   - First 100 words
+   - At least one H2 heading
+   - Meta description
+   - URL slug
+
+2. **Secondary keywords** — Use 2-3 related terms naturally throughout
+
+3. **Long-tail variations** — Include question-based variations ("how to...", "what is...")
+
+### Content Structure
+
+- **Title (H1):** 50-60 characters, include primary keyword, create curiosity
+- **Introduction:** 150-200 words, answer the main question immediately, include keyword
+- **Headings (H2/H3):** Use keyword variations, make them scannable
+- **Body paragraphs:** 3-4 sentences each, one idea per paragraph
+- **Conclusion:** Summarize key points, include call-to-action
+
+### On-Page Elements
+
+- **Meta description:** 150-160 characters, include keyword, compelling hook
+- **URL slug:** lowercase-hyphenated, include keyword, keep under 5 words
+- **Image alt text:** Descriptive, include keyword naturally
+- **Internal links:** Link to 2-3 related pages with descriptive anchor text
+
+### Content Quality Rules
+
+- **Minimum length:** 1,200 words for competitive keywords, 800+ for long-tail
+- **Readability:** 8th-grade reading level or below (use Hemingway guidelines)
+- **Original insight:** Include data, examples, or perspectives not found in top 10 results
+- **Freshness:** Reference recent developments when relevant (helps topical authority)
+
+### Anti-Patterns
+
+- Never stuff keywords (sounds robotic, hurts rankings)
+- Don't use exact keyword more than 3-4 times per 1000 words
+- Avoid thin content (<500 words for main pages)
+- Don't use generic headings ("Introduction", "Conclusion")
+- Never duplicate content from other pages
+
+## Output Checklist
+
+- [ ] Primary keyword in title, intro, one H2, meta description, URL
+- [ ] 2-3 secondary keywords used naturally
+- [ ] Content length meets minimum (800-1200+ words)
+- [ ] Reading level at or below 8th grade
+- [ ] Meta description 150-160 characters
+- [ ] URL slug under 5 words, includes keyword
+- [ ] 2-3 internal links with descriptive anchors
+- [ ] All images have descriptive alt text
+```
+
+## Schema Reference
+
+### Required Fields (All Types)
+
+<ParamField path="name" type="string" required>
+  Skill identifier. Must be unique across all installed skills.
+  
+  **Format:** lowercase-hyphenated
+  
+  **Example:** `canva`, `apify`, `image-creator`
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  English description of what the skill does. Supports YAML block scalar syntax.
+  
+  **Max length:** ~200 words (loaded in every agent context)
+</ParamField>
+
+<ParamField path="type" type="string" required>
+  Skill type determining how it's executed.
+  
+  **Options:** `mcp`, `script`, `hybrid`, `prompt`
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  Semantic version number.
+  
+  **Format:** `MAJOR.MINOR.PATCH`
+</ParamField>
+
+### Optional Metadata
+
+<ParamField path="description_pt-BR" type="string">
+  Portuguese (Brazil) translation of description.
+</ParamField>
+
+<ParamField path="description_es" type="string">
+  Spanish translation of description.
+</ParamField>
+
+<ParamField path="categories" type="array">
+  Skill categories for discovery and filtering.
+  
+  **Common categories:** `design`, `data`, `scraping`, `automation`, `content`, `social-media`, `video`, `seo`
+  
+  ```yaml
+  categories: [design, automation, images]
+  ```
+</ParamField>
+
+### MCP Configuration (type: mcp or hybrid)
+
+<ParamField path="mcp" type="object">
+  MCP server configuration. Required for `type: mcp` and `type: hybrid`.
+  
+  <Expandable title="MCP Object Schema">
+    <ParamField path="server_name" type="string" required>
+      MCP server identifier used in `.mcp.json` configuration.
+      
+      **Example:** `canva`, `apify`, `playwright`
+    </ParamField>
+    
+    <ParamField path="transport" type="string">
+      MCP transport protocol.
+      
+      **Options:**
+      - `stdio` — Standard input/output (default for command-based servers)
+      - `http` — HTTP/HTTPS endpoint
+      
+      **Default:** `stdio` (when `command` is present)
+    </ParamField>
+    
+    <ParamField path="command" type="string">
+      **For stdio transport.** Command to start MCP server.
+      
+      **Example:** `npx`, `python`, `node`
+    </ParamField>
+    
+    <ParamField path="args" type="array">
+      **For stdio transport.** Command arguments.
+      
+      ```yaml
+      args: ["-y", "@apify/actors-mcp-server@latest"]
+      ```
+    </ParamField>
+    
+    <ParamField path="url" type="string">
+      **For http transport.** MCP server endpoint URL.
+      
+      **Example:** `https://mcp.canva.com/mcp`
+    </ParamField>
+  </Expandable>
+  
+  **stdio example:**
+  ```yaml
+  mcp:
+    server_name: apify
+    command: npx
+    args: ["-y", "@apify/actors-mcp-server@latest"]
+  ```
+  
+  **http example:**
+  ```yaml
+  mcp:
+    server_name: canva
+    transport: http
+    url: "https://mcp.canva.com/mcp"
+  ```
+</ParamField>
+
+### Script Configuration (type: script or hybrid)
+
+<ParamField path="script" type="object">
+  Script execution configuration. Required for `type: script` and `type: hybrid`.
+  
+  <Expandable title="Script Object Schema">
+    <ParamField path="runtime" type="string" required>
+      Script runtime environment.
+      
+      **Options:** `node`, `python`, `bash`
+    </ParamField>
+    
+    <ParamField path="dependencies" type="array">
+      List of required packages or binaries.
+      
+      **Node.js:** npm package names
+      **Python:** pip package names
+      **Bash:** binary names (e.g., `ffmpeg`, `yt-dlp`)
+      
+      ```yaml
+      dependencies:
+        - pandas
+        - openpyxl
+      ```
+    </ParamField>
+    
+    <ParamField path="command" type="string" required>
+      Command to execute the script.
+      
+      **Examples:**
+      - `python scripts/transform.py`
+      - `node scripts/process.js`
+      - `bash scripts/download.sh`
+    </ParamField>
+  </Expandable>
+  
+  ```yaml
+  script:
+    runtime: python
+    dependencies:
+      - pandas
+      - openpyxl
+    command: python scripts/transform.py
+  ```
+</ParamField>
+
+### Environment Variables
+
+<ParamField path="env" type="array">
+  List of required environment variable names. Skill will not activate until all are set.
+  
+  **Used for:** API keys, tokens, authentication
+  
+  ```yaml
+  env:
+    - APIFY_TOKEN
+    - OPENAI_API_KEY
+  ```
+</ParamField>
+
+## Markdown Body
+
+The Markdown content after frontmatter contains instructions for agents using the skill.
+
+### Recommended Structure
+
+<ParamField path="## When to use" type="markdown" required>
+  1-2 sentences describing when agents should activate this skill.
+</ParamField>
+
+<ParamField path="## Instructions" type="markdown" required>
+  Detailed instructions for using the skill. Include:
+  
+  - Key capabilities overview
+  - Usage examples with code blocks
+  - Best practices
+  - Common workflows
+  - Error handling guidance
+  
+  **Target length:** 100-500 lines (progressive disclosure — link to bundled resources for detailed docs)
+</ParamField>
+
+<ParamField path="## Available operations" type="markdown">
+  Bulleted list of operations the skill provides.
+  
+  **Format:** `**Operation Name** — Description`
+</ParamField>
+
+### Writing Guidelines
+
+<Note>
+**Progressive Disclosure Pattern:**
+- Keep SKILL.md under 500 lines ideal
+- For complex skills, create `references/` directory with detailed docs
+- Reference external files clearly: "See `references/advanced-usage.md` for..."
+- Scripts in `scripts/` don't need to be documented in detail (usage examples sufficient)
+
+**Tone:**
+- Use imperative form ("Use this skill when...", "Run the command...")
+- Explain WHY things matter, not just WHAT to do
+- Avoid heavy-handed MUSTs — explain reasoning instead
+- Make it general, not over-fitted to specific examples
+</Note>
+
+## Bundled Resources
+
+Skills can include bundled files in subdirectories:
+
+```
+skills/{skill-name}/
+├── SKILL.md (required)
+├── scripts/         (optional) — Executable code
+│   ├── transform.py
+│   └── clean.sh
+├── references/      (optional) — Documentation loaded as needed
+│   ├── api-docs.md
+│   └── examples.md
+└── assets/          (optional) — Files used in output
+    ├── templates/
+    └── icons/
+```
+
+### Directory Purposes
+
+- **scripts/** — Executable code for deterministic/repetitive tasks
+- **references/** — Documentation loaded into context as needed (not automatically loaded)
+- **assets/** — Files used in output (templates, icons, fonts)
+
+## Validation Rules
+
+<Note>
+**Required frontmatter:** `name`, `description`, `type`, `version`
+
+**Type-specific requirements:**
+- `type: mcp` — Must include `mcp` object with `server_name` and either (`command` + `args`) or (`transport: http` + `url`)
+- `type: script` — Must include `script` object with `runtime` and `command`
+- `type: hybrid` — Must include both `mcp` and `script` objects
+- `type: prompt` — No additional fields required
+
+**File naming:** File must be named exactly `SKILL.md` (uppercase)
+
+**Environment variables:** All vars listed in `env[]` must be set in shell for skill to activate
+</Note>
+
+## Installation
+
+Skills are installed to the `skills/` directory:
+
+```bash
+# Manual installation
+mkdir -p skills/my-skill
+cp SKILL.md skills/my-skill/
+
+# Via Architect
+/opensquad → Architect → Install Skill
+```
+
+After installation, skills become available in `squad.yaml`:
+
+```yaml
+skills:
+  - web_search
+  - web_fetch
+  - my-skill
+```
+
+## Related Files
+
+- [squad.yaml](/api/squad-yaml) — References skills in `skills[]` array
+- [.agent.md](/api/agent-yaml) — Agents declare which skills they use in frontmatter
+- [Skills Engine](https://github.com/opensquad/opensquad/blob/main/_opensquad/core/skills.engine.md) — Skill installation and configuration system

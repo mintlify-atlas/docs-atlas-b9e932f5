@@ -1,0 +1,320 @@
+---
+title: Installation
+description: Install and set up OpenSquad in your development environment
+icon: download
+---
+
+OpenSquad is a multi-agent orchestration framework that runs directly in your IDE. Follow these steps to get started.
+
+## Prerequisites
+
+Before installing OpenSquad, ensure you have:
+
+<CardGroup cols={2}>
+  <Card title="Node.js 20+" icon="node-js">
+    OpenSquad requires Node.js version 20.0.0 or higher
+  </Card>
+  <Card title="Supported IDE" icon="code">
+    One of: Claude Code, Antigravity, Codex, Open Code, Cursor, or VS Code + Copilot
+  </Card>
+</CardGroup>
+
+<Note>
+Check your Node.js version with `node --version`. If you need to upgrade, visit [nodejs.org](https://nodejs.org/).
+</Note>
+
+## Quick Installation
+
+The fastest way to get started is with `npx`:
+
+```bash
+npx opensquad init
+```
+
+This command will:
+
+<Steps>
+  <Step title="Ask for your preferred language">
+    Choose between Português (Brasil), English, or Español for system outputs
+  </Step>
+  
+  <Step title="Detect your IDE">
+    Select which IDE(s) you're using. You can choose multiple options:
+    - Antigravity
+    - Claude Code
+    - Codex (OpenAI)
+    - Cursor
+    - VS Code + Copilot
+  </Step>
+  
+  <Step title="Set up your profile">
+    Enter your name and preferences for personalized squad outputs
+  </Step>
+  
+  <Step title="Install core files">
+    Copy framework templates and configuration to your project:
+    - `_opensquad/` - Core framework files
+    - `_opensquad/_memory/` - Persistent memory (company context, preferences)
+    - `skills/` - Skill integrations directory
+    - `squads/` - Your squads directory
+  </Step>
+  
+  <Step title="Install dependencies">
+    Automatically runs `npm install` to set up required packages:
+    - `@inquirer/checkbox` - Interactive checkboxes
+    - `@inquirer/input` - User input prompts
+    - `@inquirer/select` - Selection menus
+    
+    Also installs Playwright browsers for web automation features
+  </Step>
+</Steps>
+
+## Installation Output
+
+During installation, you'll see progress messages like:
+
+```bash
+🟢 Opensquad — Setup
+
+What language do you prefer for outputs?
+1. Português (Brasil)
+2. English
+3. Español
+
+  Welcome to Opensquad!
+
+  What's your name?
+
+  Which IDEs are you using? (select multiple)
+  ◉ Claude Code
+  ◯ Antigravity
+  ◯ Codex (OpenAI)
+  ◯ Cursor
+  ◯ VS Code + Copilot
+
+  ✓ Created file: _opensquad/core/architect.agent.yaml
+  ✓ Created file: _opensquad/core/runner.pipeline.md
+  ✓ Created file: skills/opensquad/SKILL.md
+  ✓ Created file: .claude/skills/opensquad/SKILL.md
+  
+  Installing dependencies...
+  Installing Playwright browsers...
+
+  ✅ Opensquad installed successfully!
+```
+
+## Project Structure
+
+After installation, your project will have:
+
+```bash
+project-root/
+├── _opensquad/
+│   ├── core/
+│   │   ├── architect.agent.yaml      # Squad design agent
+│   │   ├── runner.pipeline.md        # Pipeline execution engine
+│   │   ├── skills.engine.md          # Skill management system
+│   │   ├── best-practices/           # Platform-specific guides
+│   │   └── prompts/                  # Agent prompt templates
+│   ├── _memory/
+│   │   ├── company.md                # Your company context
+│   │   └── preferences.md            # User preferences
+│   └── _browser_profile/             # Persistent browser sessions (gitignored)
+├── skills/                           # Installed skill integrations
+├── squads/                           # Your created squads
+├── .claude/                          # Claude Code configuration (if using Claude Code)
+│   └── skills/
+│       └── opensquad/
+│           └── SKILL.md              # Main OpenSquad skill entry point
+└── CLAUDE.md                         # Project instructions for Claude
+```
+
+<Warning>
+Do not manually edit files in `_opensquad/core/` unless you know what you're doing. These are framework internals.
+</Warning>
+
+## IDE-Specific Setup
+
+### Claude Code
+
+After running `npx opensquad init`, Claude Code is ready to use. Just type:
+
+```
+/opensquad
+```
+
+<Tip>
+**Important for Playwright features:** Disable the native Claude Code Playwright plugin if installed. OpenSquad uses its own `@playwright/mcp` server configured in `.mcp.json` for browser automation.
+</Tip>
+
+### VS Code + Copilot
+
+The installer automatically configures `.vscode/settings.json` with:
+
+```json
+{
+  "chat.promptFilesLocations": [".github/prompts"]
+}
+```
+
+This enables OpenSquad prompt files in GitHub Copilot Chat.
+
+### Cursor / Antigravity / Codex
+
+These IDEs work with their respective configuration files created during installation. Follow any additional instructions shown in the terminal.
+
+## Updating OpenSquad
+
+To update the OpenSquad core framework to the latest version:
+
+```bash
+npx opensquad update
+```
+
+This updates:
+- Core framework files in `_opensquad/core/`
+- Built-in best practices
+- Pipeline runner logic
+
+<Note>
+Updating preserves your squads, skills, and memory files. Only core framework files are refreshed.
+</Note>
+
+## Managing Skills
+
+OpenSquad includes a skill system for integrations and custom capabilities.
+
+### List Installed Skills
+
+```bash
+npx opensquad skills
+```
+
+### Install a Skill
+
+```bash
+npx opensquad install <skill-name>
+```
+
+Example:
+```bash
+npx opensquad install canva-design
+```
+
+### Update a Specific Skill
+
+```bash
+npx opensquad update <skill-name>
+```
+
+### Uninstall a Skill
+
+```bash
+npx opensquad uninstall <skill-name>
+```
+
+## Verifying Installation
+
+To confirm OpenSquad is installed correctly:
+
+<Steps>
+  <Step title="Check core files exist">
+    Verify `_opensquad/core/` directory contains:
+    - `architect.agent.yaml`
+    - `runner.pipeline.md`
+    - `skills.engine.md`
+  </Step>
+  
+  <Step title="Check IDE skill is loaded">
+    For Claude Code: verify `.claude/skills/opensquad/SKILL.md` exists
+    
+    For other IDEs: check the appropriate configuration directory
+  </Step>
+  
+  <Step title="Test the skill">
+    In your IDE, type:
+    ```
+    /opensquad help
+    ```
+    You should see the OpenSquad help menu with all available commands
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Installation Fails with "Node.js version too old"
+
+OpenSquad requires Node.js 20+. Update Node.js:
+
+```bash
+# Using nvm (recommended)
+nvm install 20
+nvm use 20
+
+# Or download from nodejs.org
+```
+
+### "Command not found: npx"
+
+Ensure Node.js is properly installed and in your PATH:
+
+```bash
+node --version
+npm --version
+```
+
+### OpenSquad skill not appearing in IDE
+
+1. **For Claude Code:** Restart the IDE after installation
+2. **Check the skill file exists:** `.claude/skills/opensquad/SKILL.md`
+3. **Verify SKILL.md has proper frontmatter:**
+   ```yaml
+   ---
+   name: opensquad
+   description: "Opensquad — Multi-agent orchestration framework"
+   ---
+   ```
+
+### Playwright installation fails
+
+Manually install Playwright browsers:
+
+```bash
+npx playwright install chromium
+```
+
+## Re-initialization
+
+If you need to reconfigure OpenSquad (change language, IDE, or preferences):
+
+```bash
+npx opensquad init
+```
+
+The installer detects existing installations and offers to reconfigure without losing your squads.
+
+<Warning>
+Re-initialization updates preferences and core files but preserves:
+- Your created squads in `squads/`
+- Company context in `_opensquad/_memory/company.md`
+- Installed skills in `skills/`
+</Warning>
+
+## Next Steps
+
+Now that OpenSquad is installed:
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first squad in minutes
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/squads">
+    Learn how OpenSquad works
+  </Card>
+  <Card title="Creating Squads" icon="users" href="/squads/creating">
+    Master squad design with the Architect
+  </Card>
+  <Card title="Command Reference" icon="terminal" href="/api/cli-init">
+    See all available commands
+  </Card>
+</CardGroup>

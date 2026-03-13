@@ -1,0 +1,607 @@
+---
+title: 'IDE Integration'
+description: 'Configure OpenSquad for your preferred IDE or code editor'
+icon: 'laptop-code'
+---
+
+OpenSquad works with multiple IDEs and code editors, each with its own integration method. This guide covers setup for all supported environments.
+
+## Supported IDEs
+
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="anthropic" iconType="brand">
+    Native skill-based integration with MCP server support
+  </Card>
+  <Card title="Cursor" icon="cursor" iconType="brand">
+    Rules-based integration with MCP configuration
+  </Card>
+  <Card title="Antigravity" icon="atom">
+    Workflow-based integration for agent orchestration
+  </Card>
+  <Card title="VS Code + Copilot" icon="microsoft" iconType="brand">
+    Prompt-based integration via GitHub Copilot Chat
+  </Card>
+  <Card title="Codex (OpenAI)" icon="openai" iconType="brand">
+    Skill-based integration for OpenAI's Codex environment
+  </Card>
+</CardGroup>
+
+---
+
+## Claude Code
+
+<Tabs>
+  <Tab title="Setup">
+    Claude Code uses a **skill-based architecture** where OpenSquad is loaded as a native skill with MCP server support for browser automation.
+
+    ### Installation
+
+    ```bash
+    npx opensquad init
+    ```
+
+    Select "Claude Code" when prompted for your IDE.
+
+    ### Files Created
+
+    ```
+    .claude/
+      skills/
+        opensquad/
+          SKILL.md          # Main OpenSquad skill definition
+    .mcp.json               # Playwright MCP server config
+    CLAUDE.md               # Project-level instructions
+    ```
+
+    ### Key Configuration
+
+    **`.claude/skills/opensquad/SKILL.md`** — The skill definition that loads the OpenSquad system:
+
+    ```yaml
+    ---
+    name: opensquad
+    description: "Opensquad — Multi-agent orchestration framework"
+    ---
+    ```
+
+    This skill:
+    - Loads company context from `_opensquad/_memory/company.md`
+    - Loads user preferences from `_opensquad/_memory/preferences.md`
+    - Triggers onboarding if not configured
+    - Provides the main menu and command routing
+    - Uses `AskUserQuestion` for all interactive prompts
+
+    **`.mcp.json`** — Configures the Playwright MCP server for browser automation:
+
+    ```json
+    {
+      "mcpServers": {
+        "playwright": {
+          "command": "npx",
+          "args": [
+            "@playwright/mcp@latest",
+            "--config",
+            "_opensquad/config/playwright.config.json"
+          ]
+        }
+      }
+    }
+    ```
+
+    <Warning>
+      **Disable the native Claude Code Playwright plugin** — OpenSquad uses its own configured MCP server with persistent browser profiles. The native plugin will conflict with session management.
+    </Warning>
+
+    ### Activation
+
+    1. Open your project directory in Claude Code
+    2. Type `/opensquad` to activate the skill
+    3. If first time: complete the onboarding wizard
+    4. Otherwise: the main menu appears
+
+    ### Checkpoints
+
+    Claude Code overrides checkpoint behavior to use `AskUserQuestion`:
+
+    - All checkpoint questions use the `AskUserQuestion` tool (not plain text)
+    - Free-text questions extract 2-3 examples as options ("Other" is auto-added)
+    - Choice questions map directly to `AskUserQuestion` options
+    - Multiple questions can be combined into a single call (up to 4 slots)
+
+  </Tab>
+  <Tab title="Commands">
+    ### Available Commands
+
+    | Command | Action |
+    |---------|--------|
+    | `/opensquad` | Open main menu |
+    | `/opensquad create <description>` | Create a new squad |
+    | `/opensquad run <name>` | Run a squad |
+    | `/opensquad list` | List all squads |
+    | `/opensquad edit <name>` | Edit a squad |
+    | `/opensquad skills` | Skills management menu |
+    | `/opensquad install <name>` | Install a skill |
+    | `/opensquad uninstall <name>` | Remove a skill |
+    | `/opensquad delete <name>` | Delete a squad |
+    | `/opensquad edit-company` | Edit company profile |
+    | `/opensquad settings` | Change preferences |
+    | `/opensquad help` | Show help text |
+
+    ### Natural Language
+
+    You can also use plain language:
+
+    ```
+    "Create a squad that generates Instagram carousels from trending news"
+    "Run the weekly-reports squad"
+    "Show me my squads"
+    ```
+
+    The skill will infer your intent and route to the appropriate action.
+
+  </Tab>
+  <Tab title="Troubleshooting">
+    ### Common Issues
+
+    <Accordion title="Skill not loading">
+      **Symptom:** `/opensquad` command not recognized
+
+      **Solution:**
+      1. Verify `.claude/skills/opensquad/SKILL.md` exists
+      2. Restart Claude Code
+      3. Check for syntax errors in `SKILL.md` frontmatter
+      4. Ensure file is UTF-8 encoded
+    </Accordion>
+
+    <Accordion title="MCP server connection failed">
+      **Symptom:** Browser automation fails with connection error
+
+      **Solution:**
+      1. Verify `.mcp.json` is in project root
+      2. Run `npx playwright install chromium`
+      3. Check that the native Playwright plugin is **disabled**
+      4. Restart Claude Code
+    </Accordion>
+
+    <Accordion title="Onboarding loops infinitely">
+      **Symptom:** Setup wizard runs every time despite completion
+
+      **Solution:**
+      1. Check `_opensquad/_memory/company.md` is not empty
+      2. Verify it doesn't contain `<!-- NOT CONFIGURED -->`
+      3. Ensure write permissions on `_memory/` directory
+    </Accordion>
+
+  </Tab>
+</Tabs>
+
+---
+
+## Cursor
+
+<Tabs>
+  <Tab title="Setup">
+    Cursor uses a **rules-based architecture** where OpenSquad instructions are loaded as cursor rules with MCP support.
+
+    ### Installation
+
+    ```bash
+    npx opensquad init
+    ```
+
+    Select "Cursor" when prompted.
+
+    ### Files Created
+
+    ```
+    .cursor/
+      rules/
+        opensquad.mdc       # OpenSquad rules file
+      mcp.json              # MCP server configuration
+    .cursorignore           # Ignore patterns
+    ```
+
+    ### Key Configuration
+
+    **`.cursor/rules/opensquad.mdc`** — The rules file that defines OpenSquad behavior:
+
+    ```markdown
+    ---
+    description: Opensquad multi-agent orchestration framework instructions
+    alwaysApply: true
+    ---
+    # Opensquad — Project Instructions
+    ...
+    ```
+
+    The `alwaysApply: true` flag ensures OpenSquad context is loaded in every conversation.
+
+    **`.cursor/mcp.json`** — Configures MCP servers (same structure as Claude Code).
+
+    ### Activation
+
+    1. Open your project in Cursor
+    2. Type `/opensquad` in chat
+    3. The rules auto-apply — no manual activation needed
+
+    ### Interaction Model
+
+    Cursor uses **numbered list menus** for all interactions:
+
+    - Main menu displays as options 1-4
+    - User replies with a single number
+    - Free-text prompts clearly labeled: "Type your answer:"
+    - Never mix menu state and free-text state
+
+  </Tab>
+  <Tab title="Commands">
+    Same commands as Claude Code (see Claude Code tab).
+
+    ### Menu Navigation
+
+    All menus are numbered:
+
+    ```
+    What would you like to do?
+
+    1. Create a new squad
+    2. Run an existing squad
+    3. My squads
+    4. More options
+    ```
+
+    Reply with the number to select.
+
+  </Tab>
+  <Tab title="Troubleshooting">
+    <Accordion title="Rules not applying">
+      **Symptom:** OpenSquad commands not recognized
+
+      **Solution:**
+      1. Verify `.cursor/rules/opensquad.mdc` exists
+      2. Check frontmatter has `alwaysApply: true`
+      3. Restart Cursor
+      4. Open a new chat session
+    </Accordion>
+
+    <Accordion title="MCP server not connecting">
+      **Solution:** Same as Claude Code — verify `.cursor/mcp.json` exists and run `npx playwright install chromium`.
+    </Accordion>
+
+    <Accordion title="Menu selections not working">
+      **Symptom:** Replying with numbers doesn't trigger actions
+
+      **Solution:**
+      1. Ensure you're replying with just the number (e.g., `1`)
+      2. Don't add extra text (e.g., "I choose 1" may not parse)
+      3. Wait for the menu to fully render before replying
+    </Accordion>
+
+  </Tab>
+</Tabs>
+
+---
+
+## Antigravity
+
+<Tabs>
+  <Tab title="Setup">
+    Antigravity uses a **workflow-based architecture** where OpenSquad is defined as an agent workflow.
+
+    ### Installation
+
+    ```bash
+    npx opensquad init
+    ```
+
+    Select "Antigravity" when prompted.
+
+    ### Files Created
+
+    ```
+    .agent/
+      workflows/
+        opensquad.md        # OpenSquad workflow definition
+    .antigravity/
+      rules.md              # Project-level rules
+    ```
+
+    ### Key Configuration
+
+    **`.agent/workflows/opensquad.md`** — The workflow that activates OpenSquad:
+
+    ```markdown
+    ---
+    description: Opensquad — Create and run AI agent squads
+    ---
+
+    1. Read `.antigravity/rules.md` completely
+    2. Read `_opensquad/_memory/company.md`
+    3. Read `_opensquad/_memory/preferences.md`
+    4. If company.md is empty, run ONBOARDING flow
+    5. Otherwise, show main menu
+    ```
+
+    **`.antigravity/rules.md`** — Contains the full OpenSquad system definition (onboarding, menus, command routing).
+
+    ### Activation
+
+    Workflows in Antigravity are invoked by referencing them in conversation or via triggers.
+
+  </Tab>
+  <Tab title="Commands">
+    Same command set as Claude Code.
+
+    Natural language routing is supported.
+
+  </Tab>
+  <Tab title="Troubleshooting">
+    <Accordion title="Workflow not found">
+      **Solution:**
+      1. Verify `.agent/workflows/opensquad.md` exists
+      2. Check frontmatter syntax
+      3. Restart Antigravity
+    </Accordion>
+
+    <Accordion title="Rules not loading">
+      **Solution:**
+      1. Verify `.antigravity/rules.md` exists
+      2. Check for UTF-8 encoding
+      3. Ensure no YAML syntax errors in embedded frontmatter
+    </Accordion>
+
+  </Tab>
+</Tabs>
+
+---
+
+## VS Code + Copilot
+
+<Tabs>
+  <Tab title="Setup">
+    VS Code uses **GitHub Copilot Chat** with a custom prompt file for OpenSquad integration.
+
+    ### Installation
+
+    ```bash
+    npx opensquad init
+    ```
+
+    Select "VS Code + Copilot" when prompted.
+
+    ### Files Created
+
+    ```
+    .github/
+      prompts/
+        opensquad.prompt.md # Copilot Chat prompt
+    .vscode/
+      settings.json         # Prompt files location config
+      mcp.json              # MCP server config
+    ```
+
+    ### Key Configuration
+
+    **`.github/prompts/opensquad.prompt.md`** — The prompt file Copilot loads:
+
+    ```markdown
+    ---
+    mode: 'agent'
+    description: 'Opensquad — Multi-agent orchestration'
+    ---
+
+    You are the Opensquad orchestration system...
+    ```
+
+    **`.vscode/settings.json`** — Registers the prompt files directory:
+
+    ```json
+    {
+      "chat.promptFilesLocations": [".github/prompts"]
+    }
+    ```
+
+    If `settings.json` already exists, the installer **merges** this configuration.
+
+    ### Activation
+
+    1. Open project in VS Code
+    2. Open Copilot Chat (`Ctrl+Alt+I` or `Cmd+Shift+I`)
+    3. Type `#opensquad` to reference the prompt file
+    4. Follow onboarding if first time
+
+  </Tab>
+  <Tab title="Commands">
+    Same command set as Claude Code.
+
+    Prefix commands with `#opensquad` in Copilot Chat:
+
+    ```
+    #opensquad /create "Instagram content squad"
+    #opensquad /run weekly-reports
+    #opensquad /list
+    ```
+
+  </Tab>
+  <Tab title="Troubleshooting">
+    <Accordion title="Prompt file not found">
+      **Symptom:** `#opensquad` autocomplete doesn't appear
+
+      **Solution:**
+      1. Verify `.github/prompts/opensquad.prompt.md` exists
+      2. Check `.vscode/settings.json` has `chat.promptFilesLocations`
+      3. Restart VS Code
+      4. Reload Copilot Chat window
+    </Accordion>
+
+    <Accordion title="Settings.json merge failed">
+      **Symptom:** Installation warned about invalid JSON
+
+      **Solution:**
+      1. Manually add to `.vscode/settings.json`:
+         ```json
+         {
+           "chat.promptFilesLocations": [".github/prompts"]
+         }
+         ```
+      2. Fix any JSON syntax errors in existing settings
+    </Accordion>
+
+  </Tab>
+</Tabs>
+
+---
+
+## Codex (OpenAI)
+
+<Tabs>
+  <Tab title="Setup">
+    Codex uses a **skill-based architecture** similar to Claude Code.
+
+    ### Installation
+
+    ```bash
+    npx opensquad init
+    ```
+
+    Select "Codex (OpenAI)" when prompted.
+
+    ### Files Created
+
+    ```
+    .agents/
+      skills/
+        opensquad/
+          SKILL.md          # OpenSquad skill definition
+    AGENTS.md               # Project-level agent instructions
+    ```
+
+    ### Key Configuration
+
+    **`.agents/skills/opensquad/SKILL.md`** — Skill definition for Codex environment.
+
+    **`AGENTS.md`** — Project-level instructions that all agents load.
+
+    ### Activation
+
+    Refer to Codex-specific documentation for skill activation in your environment.
+
+  </Tab>
+  <Tab title="Commands">
+    Same command set as Claude Code.
+
+  </Tab>
+  <Tab title="Troubleshooting">
+    <Accordion title="Skill not loading">
+      **Solution:**
+      1. Verify `.agents/skills/opensquad/SKILL.md` exists
+      2. Check frontmatter syntax
+      3. Consult Codex environment documentation for skill troubleshooting
+    </Accordion>
+
+  </Tab>
+</Tabs>
+
+---
+
+## Switching IDEs
+
+You can configure OpenSquad for multiple IDEs in the same project:
+
+```bash
+npx opensquad init
+```
+
+When you run `init` in an already-initialized project, it becomes a **re-configuration** wizard:
+
+- Existing `_opensquad/` core files are preserved
+- You can select additional IDEs to add
+- IDE-specific files are added without removing others
+
+### Multi-IDE Setup Example
+
+```bash
+# Initial setup for Claude Code
+npx opensquad init
+# Select: Claude Code
+
+# Later, add Cursor support
+npx opensquad init
+# Select: Cursor
+```
+
+Result:
+
+```
+.claude/skills/opensquad/SKILL.md  ← Claude Code
+.cursor/rules/opensquad.mdc        ← Cursor
+_opensquad/                        ← Shared core
+squads/                            ← Shared squads
+```
+
+Both IDEs now work with the same squads and company context.
+
+---
+
+## Environment Variables
+
+Some features require environment variables:
+
+### Browser Automation (All IDEs)
+
+Playwright MCP server uses the persistent profile at `_opensquad/_browser_profile/`:
+
+- First login to social platforms is manual
+- Subsequent sessions reuse saved cookies
+- No environment variables required
+
+### Skill-Specific Variables
+
+When installing skills that require API keys:
+
+```bash
+npx opensquad install <skill-name>
+```
+
+The installer prompts for required variables and saves them to:
+
+- **Claude Code / Codex:** `.env` (gitignored)
+- **Cursor:** `.cursor/.env`
+- **VS Code:** `.env`
+
+Example:
+
+```env
+APPIFY_API_KEY=your_key_here
+CANVA_API_TOKEN=your_token_here
+```
+
+<Tip>
+  Add `.env` to your `.gitignore` to avoid committing secrets. OpenSquad's installer creates a `.env.example` template for team sharing.
+</Tip>
+
+---
+
+## IDE Comparison
+
+| Feature | Claude Code | Cursor | Antigravity | VS Code | Codex |
+|---------|-------------|--------|-------------|---------|-------|
+| **Integration Type** | Skill | Rules | Workflow | Prompt | Skill |
+| **MCP Support** | ✅ Native | ✅ Native | ❌ | ✅ Via config | ❌ |
+| **Interactive Menus** | `AskUserQuestion` | Numbered lists | Numbered lists | Numbered lists | Depends on env |
+| **Browser Automation** | ✅ Full | ✅ Full | ⚠️ Limited | ✅ Full | ⚠️ Limited |
+| **Subagent Dispatch** | ✅ Native | ✅ Native | ✅ Native | ⚠️ Single thread | ✅ Native |
+| **Best For** | Production squads | Multi-IDE teams | Workflow automation | GitHub-integrated teams | OpenAI ecosystems |
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Best Practices" icon="star" href="/advanced/best-practices">
+    Learn squad design patterns and optimization techniques
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/advanced/troubleshooting">
+    Resolve common issues and debug squad failures
+  </Card>
+</CardGroup>

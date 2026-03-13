@@ -1,0 +1,330 @@
+---
+title: "squad.yaml"
+description: "Squad configuration file format specification"
+---
+
+# squad.yaml Format
+
+The `squad.yaml` file defines a multi-agent squad's metadata, configuration, agents, and pipeline entry point.
+
+## File Location
+
+```
+squads/{squad-code}/squad.yaml
+```
+
+## Complete Example
+
+```yaml
+name: "Fábrica de Carrosséis"
+code: "instagram-carrossel"
+description: >
+  Transforma qualquer texto ou notícia em um carrossel de Instagram visual,
+  didático e memorável — com dados reais, reflexões profundas e publicação
+  automática via API.
+icon: "📸"
+version: "1.0.0"
+created: "2026-03-03"
+mode: "alta-performance"
+
+company: "_opensquad/_memory/company.md"
+preferences: "_opensquad/_memory/preferences.md"
+memory: "_memory/memories.md"
+
+target_audience: "Audiência geral com foco em interessados em tecnologia e IA"
+platform: "Instagram Feed"
+format: "instagram-feed"
+performance_mode: "alta-performance"
+
+skills:
+  - web_search
+  - web_fetch
+  - image-creator
+  - instagram-publisher
+
+data:
+  - pipeline/data/research-brief.md
+  - pipeline/data/domain-framework.md
+  - pipeline/data/quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/anti-patterns.md
+  - pipeline/data/tone-of-voice.md
+
+agents:
+  - id: researcher
+    name: "Ângela Ângulo"
+    icon: "🔍"
+    custom: agents/researcher.custom.md
+
+  - id: copywriter
+    name: "Carlos Carrossel"
+    icon: "✍️"
+    custom: agents/copywriter.custom.md
+
+  - id: reviewer
+    name: "Vera Veredito"
+    icon: "✅"
+    custom: agents/reviewer.custom.md
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+
+output_dir: output/
+```
+
+## Schema Reference
+
+### Metadata Fields
+
+<ParamField path="name" type="string" required>
+  Human-readable squad name displayed in UIs and logs.
+</ParamField>
+
+<ParamField path="code" type="string" required>
+  Unique identifier for the squad. Used in file paths and references. Must be kebab-case.
+  
+  **Example:** `instagram-carrossel`, `blog-writer`, `data-analyzer`
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Multi-line description of what the squad does. Supports YAML block scalar syntax (`>`).
+</ParamField>
+
+<ParamField path="icon" type="string" required>
+  Single emoji representing the squad. Used in UI displays.
+  
+  **Example:** `📸`, `✍️`, `📊`
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  Semantic version number for the squad configuration.
+  
+  **Format:** `MAJOR.MINOR.PATCH`
+</ParamField>
+
+<ParamField path="created" type="string" required>
+  ISO date when the squad was created.
+  
+  **Format:** `YYYY-MM-DD`
+</ParamField>
+
+<ParamField path="mode" type="string" required>
+  Performance mode determining pipeline depth and token usage.
+  
+  **Options:**
+  - `alta-performance` — Full pipeline with deep analysis, multiple optimization passes, dedicated review tasks
+  - `economico` — Lightweight pipeline with single-pass creation and basic review
+</ParamField>
+
+### Context Files
+
+<ParamField path="company" type="string" required>
+  Path to company context file loaded for every squad run.
+  
+  **Default:** `_opensquad/_memory/company.md`
+</ParamField>
+
+<ParamField path="preferences" type="string" required>
+  Path to user preferences file (language, output format preferences).
+  
+  **Default:** `_opensquad/_memory/preferences.md`
+</ParamField>
+
+<ParamField path="memory" type="string" required>
+  Path to squad-specific memory file tracking user approvals, rejections, and learned preferences.
+  
+  **Default:** `_memory/memories.md` (relative to squad directory)
+</ParamField>
+
+### Squad Configuration
+
+<ParamField path="target_audience" type="string">
+  Description of the intended audience for content produced by this squad.
+</ParamField>
+
+<ParamField path="platform" type="string">
+  Target platform for content distribution.
+  
+  **Examples:** `Instagram Feed`, `LinkedIn`, `Blog`, `Email Newsletter`
+</ParamField>
+
+<ParamField path="format" type="string">
+  Primary content format identifier. Maps to best-practice files in `_opensquad/core/best-practices/`.
+  
+  **Examples:** `instagram-feed`, `linkedin-post`, `blog-seo`, `twitter-thread`
+</ParamField>
+
+<ParamField path="performance_mode" type="string" required>
+  Same as `mode` field. Determines task decomposition depth.
+  
+  **Values:** `alta-performance`, `economico`
+</ParamField>
+
+### Skills
+
+<ParamField path="skills" type="array">
+  List of skills available to all agents in the squad. Skills provide integrations, scripts, or behavioral prompts.
+  
+  **Native skills (always available):**
+  - `web_search` — Web search capability
+  - `web_fetch` — Fetch and read web pages
+  
+  **Custom skills (must be installed in `skills/` directory):**
+  - `image-creator` — Render HTML to images via Playwright
+  - `instagram-publisher` — Publish to Instagram API
+  - `apify` — Web scraping platform
+  - `canva` — Design automation
+  
+  ```yaml
+  skills:
+    - web_search
+    - web_fetch
+    - image-creator
+    - instagram-publisher
+  ```
+</ParamField>
+
+### Reference Data
+
+<ParamField path="data" type="array">
+  List of reference material file paths loaded into agent context. Paths are relative to squad directory.
+  
+  **Common reference files:**
+  - `pipeline/data/research-brief.md` — Domain knowledge research
+  - `pipeline/data/domain-framework.md` — Operational framework for the domain
+  - `pipeline/data/quality-criteria.md` — Quality benchmarks and scoring
+  - `pipeline/data/output-examples.md` — High-quality output examples
+  - `pipeline/data/anti-patterns.md` — Common mistakes to avoid
+  - `pipeline/data/tone-of-voice.md` — Tone options (for content squads)
+  
+  ```yaml
+  data:
+    - pipeline/data/research-brief.md
+    - pipeline/data/domain-framework.md
+    - pipeline/data/quality-criteria.md
+  ```
+</ParamField>
+
+### Agents
+
+<ParamField path="agents" type="array" required>
+  List of agent definitions for the squad. Each agent must have an ID, name, icon, and custom definition file.
+  
+  <Expandable title="Agent Object Schema">
+    <ParamField path="id" type="string" required>
+      Unique identifier for the agent within the squad. Used in pipeline step references.
+      
+      **Format:** lowercase-hyphenated
+    </ParamField>
+    
+    <ParamField path="name" type="string" required>
+      Agent's display name. Convention: alliterative two-word name (FirstName LastName).
+      
+      **Examples:** `Ângela Ângulo`, `Carlos Carrossel`, `Vera Veredito`
+    </ParamField>
+    
+    <ParamField path="icon" type="string" required>
+      Single emoji representing the agent's role.
+    </ParamField>
+    
+    <ParamField path="custom" type="string" required>
+      Path to agent definition file (`.custom.md` or `.agent.md`) relative to squad directory.
+      
+      **Format:** `agents/{agent-id}.custom.md` or `agents/{agent-id}.agent.md`
+    </ParamField>
+  </Expandable>
+  
+  ```yaml
+  agents:
+    - id: researcher
+      name: "Ângela Ângulo"
+      icon: "🔍"
+      custom: agents/researcher.custom.md
+    
+    - id: copywriter
+      name: "Carlos Carrossel"
+      icon: "✍️"
+      custom: agents/copywriter.custom.md
+  ```
+</ParamField>
+
+### Pipeline
+
+<ParamField path="pipeline" type="object" required>
+  Pipeline configuration defining the execution entry point.
+  
+  <Expandable title="Pipeline Object Schema">
+    <ParamField path="entry" type="string" required>
+      Path to pipeline definition file relative to squad directory.
+      
+      **Default:** `pipeline/pipeline.yaml`
+    </ParamField>
+  </Expandable>
+  
+  ```yaml
+  pipeline:
+    entry: pipeline/pipeline.yaml
+  ```
+</ParamField>
+
+### Output
+
+<ParamField path="output_dir" type="string" required>
+  Directory for pipeline execution outputs. All agent outputs are written here.
+  
+  **Default:** `output/`
+</ParamField>
+
+### Optional Investigation Metadata
+
+<ParamField path="investigation" type="object">
+  Metadata added when Sherlock investigation enriched the squad during creation.
+  
+  <Expandable title="Investigation Object Schema">
+    <ParamField path="enriched" type="boolean">
+      Whether the squad was enriched with real content pattern investigation.
+    </ParamField>
+    
+    <ParamField path="profiles_analyzed" type="number">
+      Number of profiles analyzed by Sherlock.
+    </ParamField>
+    
+    <ParamField path="date" type="string">
+      ISO date of investigation.
+      
+      **Format:** `YYYY-MM-DD`
+    </ParamField>
+    
+    <ParamField path="dir" type="string">
+      Path to investigation artifacts directory.
+      
+      **Format:** `squads/{code}/_investigations`
+    </ParamField>
+  </Expandable>
+  
+  ```yaml
+  investigation:
+    enriched: true
+    profiles_analyzed: 3
+    date: "2026-03-03"
+    dir: squads/instagram-carrossel/_investigations
+  ```
+</ParamField>
+
+## Validation Rules
+
+<Note>
+**Required fields:** `name`, `code`, `description`, `icon`, `version`, `created`, `mode`, `company`, `preferences`, `memory`, `performance_mode`, `agents`, `pipeline`, `output_dir`
+
+**File naming:** The file must be named exactly `squad.yaml` and located at the root of the squad directory.
+
+**Agent references:** All agent IDs referenced in `agents[]` must have corresponding files at the paths specified in `custom` field.
+
+**Skill validation:** All non-native skills listed in `skills[]` must exist in the `skills/` directory with a valid `SKILL.md` file.
+</Note>
+
+## Related Files
+
+- [pipeline.yaml](/api/pipeline-yaml) — Pipeline definition referenced by `pipeline.entry`
+- [.agent.md](/api/agent-yaml) — Agent definition format for `agents[].custom` files
+- [SKILL.md](/api/skill-format) — Skill format for entries in `skills[]`

@@ -1,0 +1,819 @@
+---
+title: Running Squads
+description: Execute squads, understand pipeline flow, checkpoints, and output management
+icon: play
+---
+
+Running a squad executes its pipeline step by step, with agents working inline or in the background. The **Pipeline Runner** orchestrates execution, manages checkpoints, and handles agent handoffs.
+
+## Starting a Squad Run
+
+### Method 1: Direct Command
+
+```
+/opensquad run <squad-name>
+```
+
+Example:
+```
+/opensquad run tech-news-carousel
+```
+
+### Method 2: Interactive Menu
+
+```
+/opensquad
+```
+
+Select **"Run an existing squad"**, then choose from your squad list.
+
+<Tip>
+If you just created a squad, the Architect prompts you to run it immediately:
+
+```
+✅ Squad created: tech-news-carousel
+Ready to run? Type: /opensquad run tech-news-carousel
+```
+</Tip>
+
+## Pipeline Initialization
+
+When you start a run, the Pipeline Runner:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚀 Running squad: Tech News Carousel
+📋 Pipeline: 9 steps
+🤖 Agents:
+   🔍 Pedro Pesquisa
+   💡 Ivan Ideia
+   📱 Iago Instagram
+   📝 Luna LinkedIn
+   ✅ Renata Revisão
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Behind the scenes:**
+
+<Steps>
+  <Step title="Load Squad Files">
+    - `squad.yaml` - Squad definition
+    - `squad-party.csv` - Agent manifest
+    - `pipeline/pipeline.yaml` - Pipeline structure
+    - Company context from `_opensquad/_memory/company.md`
+    - Squad memory from `_memory/memories.md`
+  </Step>
+  
+  <Step title="Resolve Skills">
+    Check each skill declared in `squad.yaml`:
+    - Native skills (`web_search`, `web_fetch`) - always available
+    - MCP skills (`apify`, `playwright`) - verify configuration in `.claude/settings.local.json`
+    - Custom skills - verify `skills/{skill}/SKILL.md` exists
+    
+    **If any skill is missing:** Stop and prompt user to install.
+  </Step>
+  
+  <Step title="Initialize Run Folder">
+    Create timestamped output folder:
+    ```
+    squads/tech-news-carousel/output/2026-03-13-143022/
+    ```
+    
+    Format: `YYYY-MM-DD-HHmmss`
+    
+    All outputs for this run go here.
+  </Step>
+  
+  <Step title="Create Dashboard State">
+    Generate `state.json` for Virtual Office dashboard:
+    ```json
+    {
+      "squad": "tech-news-carousel",
+      "status": "running",
+      "step": { "current": 1, "total": 9, "label": "research-focus" },
+      "agents": [
+        { "id": "pedro-pesquisa", "status": "idle", "desk": { "col": 1, "row": 1 } },
+        { "id": "iago-instagram", "status": "idle", "desk": { "col": 2, "row": 1 } },
+        ...
+      ],
+      "handoff": null,
+      "startedAt": "2026-03-13T14:30:22Z",
+      "updatedAt": "2026-03-13T14:30:22Z"
+    }
+    ```
+    
+    This file is read by the Virtual Office to show real-time progress.
+  </Step>
+</Steps>
+
+<Note>
+`state.json` is temporary — it only exists while the squad is running. After completion, it's deleted.
+</Note>
+
+## Pipeline Execution Flow
+
+The Pipeline Runner executes steps sequentially:
+
+### Step Anatomy
+
+Every pipeline step has YAML frontmatter defining execution:
+
+```yaml
+---
+execution: subagent          # or: inline
+agent: pedro-pesquisa         # Agent ID from squad-party.csv
+format: instagram-feed        # (Optional) Platform-specific best practices
+inputFile: squads/tech-news-carousel/pipeline/data/research-focus.md
+outputFile: squads/tech-news-carousel/output/research-findings.md
+model_tier: powerful          # (Subagent only) fast | powerful
+---
+```
+
+**Key fields:**
+
+<AccordionGroup>
+  <Accordion title="execution" icon="gears">
+    **`subagent`** - Runs in background via Task tool
+    - Used for: Research, content creation, data analysis
+    - User sees: "🔍 Agent is working in the background..."
+    - Can run multiple subagents in parallel
+    
+    **`inline`** - Runs in main conversation
+    - Used for: User-facing interactions, quick decisions
+    - User sees: Agent's direct output
+    - Sequential only (one at a time)
+  </Accordion>
+  
+  <Accordion title="model_tier" icon="microchip">
+    Only for `execution: subagent`. Controls LLM model selection:
+    
+    **`fast`** - Lightweight model for data extraction
+    - Investigator agents (Sherlock)
+    - Data fetching and parsing
+    - Simple transformations
+    
+    **`powerful`** - Default model for creative/analytical work
+    - Writers, creators, reviewers
+    - Strategy and research
+    - Complex reasoning
+    
+    If omitted, defaults to `powerful`.
+  </Accordion>
+  
+  <Accordion title="format" icon="palette">
+    Platform-specific best practices injection:
+    
+    ```yaml
+    format: instagram-feed
+    ```
+    
+    Pipeline Runner reads `_opensquad/core/best-practices/instagram-feed.md` and injects:
+    - Algorithm signals
+    - Content structure patterns
+    - Engagement optimization
+    - Technical specs
+    
+    This context is added to the agent's instructions automatically.
+  </Accordion>
+  
+  <Accordion title="inputFile / outputFile" icon="file-arrow-down">
+    **`inputFile`** - What this step reads (output from previous step)
+    
+    **`outputFile`** - Where this step writes results
+    
+    **Path transformation:**
+    
+    Declared path:
+    ```
+    squads/tech-news-carousel/output/research-findings.md
+    ```
+    
+    Actual write location:
+    ```
+    squads/tech-news-carousel/output/2026-03-13-143022/v1/research-findings.md
+    ```
+    
+    The Pipeline Runner:
+    1. Inserts run ID (`2026-03-13-143022`)
+    2. Inserts version folder (`v1`, `v2`, etc.)
+    
+    This preserves all iterations if revision cycles occur.
+  </Accordion>
+</AccordionGroup>
+
+### Checkpoint Steps
+
+Checkpoints pause execution for user input:
+
+```yaml
+---
+type: checkpoint
+outputFile: squads/tech-news-carousel/pipeline/data/research-focus.md  # Optional
+---
+
+# Checkpoint: Define Research Focus
+
+What specific tech topic should Pedro research today?
+Example: 'GPT-4 vs Claude comparison', 'AI agent frameworks'
+
+Topic: [user types here]
+
+Select time range:
+1. Last 24 hours
+2. Last 7 days
+3. Last month
+4. No time restriction (evergreen)
+
+You: [user types number]
+```
+
+**Execution:**
+1. Runner displays checkpoint message
+2. User provides input (free text or numbered choice)
+3. If `outputFile` is specified, Runner writes user response to that file
+4. Next step reads the file as its `inputFile`
+
+<Note>
+**Research focus checkpoints** always include `outputFile` because researcher agents run as subagents — they can't interactively ask the user questions. The checkpoint collects input *before* the subagent starts.
+</Note>
+
+## Task-Based Agent Execution
+
+Agents with task decomposition execute multiple sub-steps:
+
+### Agent with Tasks
+
+```yaml
+---
+id: "squads/tech-news-carousel/agents/iago-instagram"
+execution: subagent
+tasks:
+  - tasks/create-carousel.md
+  - tasks/optimize-carousel.md
+  - tasks/polish-hooks.md
+---
+```
+
+### Execution Flow
+
+<Steps>
+  <Step title="Load Agent + Tasks">
+    Runner reads:
+    - Agent definition (persona, principles, voice)
+    - All task files in order
+  </Step>
+  
+  <Step title="Execute Task 1">
+    ```
+    📱 Iago Instagram — Task 1/3: Create Carousel...
+    ```
+    
+    Prompt includes:
+    - Agent persona and principles (fixed)
+    - Task 1 process, output format, quality criteria
+    - Input: Step's inputFile
+    
+    Agent produces: carousel draft
+  </Step>
+  
+  <Step title="Check Veto Conditions">
+    Task file defines veto conditions:
+    ```markdown
+    ## Veto Conditions
+    
+    Reject and redo if ANY are true:
+    1. Any slide exceeds 30 words
+    2. Hook doesn't create curiosity
+    3. No CTA in final slide
+    ```
+    
+    Runner evaluates output against conditions.
+    - **If triggered:** Ask agent to fix, retry (max 2 attempts)
+    - **If passes:** Continue to Task 2
+  </Step>
+  
+  <Step title="Execute Task 2">
+    ```
+    📱 Iago Instagram — Task 2/3: Optimize Carousel...
+    ```
+    
+    Input: Output from Task 1 (carousel draft)
+    
+    Agent produces: optimized carousel
+  </Step>
+  
+  <Step title="Execute Task 3">
+    ```
+    📱 Iago Instagram — Task 3/3: Polish Hooks...
+    ```
+    
+    Input: Output from Task 2 (optimized carousel)
+    
+    Agent produces: final carousel with polished hooks
+  </Step>
+  
+  <Step title="Save Final Output">
+    Output from Task 3 becomes the step's output:
+    ```
+    squads/tech-news-carousel/output/2026-03-13-143022/v1/instagram-carousel.md
+    ```
+    
+    This is what the next step (or checkpoint) receives.
+  </Step>
+</Steps>
+
+<Info>
+**Backward compatibility:** Agents without a `tasks:` field execute monolithically (current behavior). Task decomposition is optional.
+</Info>
+
+## Agent Handoffs
+
+Between steps, the Pipeline Runner updates the dashboard to show agent handoffs:
+
+### Handoff Animation
+
+```json
+// state.json during handoff
+{
+  "agents": [
+    { "id": "pedro-pesquisa", "status": "delivering", "deliverTo": "ivan-ideia" },
+    { "id": "ivan-ideia", "status": "idle" },
+    ...
+  ],
+  "handoff": {
+    "from": "pedro-pesquisa",
+    "to": "ivan-ideia",
+    "message": "Ranked 5 trending AI stories by engagement potential",
+    "completedAt": "2026-03-13T14:35:42Z"
+  }
+}
+```
+
+**Sequence:**
+1. Agent A completes work → status: `"delivering"`, deliverTo: `"agent-b"`
+2. Runner writes state.json
+3. Runner waits 3 seconds (for Virtual Office animation)
+4. Agent A → status: `"done"`, Agent B → status: `"working"`
+5. Runner writes state.json
+6. Next step begins
+
+<Note>
+Handoff animation is visible in the Virtual Office dashboard. In the CLI, you just see sequential step execution.
+</Note>
+
+## Output Versioning
+
+If a reviewer rejects content and the pipeline loops back, outputs are versioned:
+
+### Version Flow
+
+```
+First attempt:
+squads/tech-news-carousel/output/2026-03-13-143022/v1/instagram-carousel.md
+
+Reviewer rejects → loop back to creator
+
+Second attempt:
+squads/tech-news-carousel/output/2026-03-13-143022/v2/instagram-carousel.md
+
+Reviewer approves → pipeline continues
+```
+
+**Versioning rules:**
+- Same run folder (same timestamp)
+- Incremented version folder (`v1`, `v2`, `v3`, ...)
+- All previous versions preserved
+
+<Accordion title="Version Detection Logic">
+Runner uses Bash to detect existing versions:
+
+```bash
+ls -1 squads/tech-news-carousel/output/2026-03-13-143022/ | grep -E '^v[0-9]+$' | sort -V | tail -1
+```
+
+Outputs: `v2`
+
+Next write uses: `v3`
+
+**Per output group:** Versions are tracked per parent directory. Different output types can have different version counts in the same run.
+</Accordion>
+
+## Review Loops
+
+When a reviewer rejects content:
+
+### On Reject Flow
+
+```yaml
+# In step-08-review.md frontmatter
+on_reject: step-06-create-content
+max_review_cycles: 2
+```
+
+<Steps>
+  <Step title="Reviewer Evaluates">
+    ```
+    ✅ Renata Revisão is working...
+    
+    Reviewing Instagram Carousel...
+    
+    Quality Score: 68/100
+    
+    Issues:
+    ❌ Hook is generic ("5 things about AI")
+    ❌ Slide 3 exceeds 30 words
+    ❌ CTA doesn't ask a question
+    
+    Recommendation: Reject - needs stronger hook and tighter slides
+    ```
+  </Step>
+  
+  <Step title="Pipeline Loops Back">
+    ```
+    🔄 Review rejected. Looping back to: Create Content (Cycle 1/2)
+    
+    Passing feedback to Iago Instagram...
+    ```
+    
+    Runner:
+    1. Increments review cycle counter
+    2. Jumps to `step-06-create-content`
+    3. Passes reviewer feedback to creator
+  </Step>
+  
+  <Step title="Creator Revises">
+    ```
+    📱 Iago Instagram is working in the background...
+    
+    [Revising with feedback:
+    - Strengthen hook: use question or bold statement
+    - Tighten slide 3 to 25 words max
+    - Add engagement question to CTA]
+    
+    ✓ Iago Instagram completed
+    ```
+    
+    Output goes to `v2/instagram-carousel.md`
+  </Step>
+  
+  <Step title="Reviewer Re-evaluates">
+    ```
+    ✅ Renata Revisão is working...
+    
+    Reviewing Instagram Carousel (v2)...
+    
+    Quality Score: 89/100
+    
+    Improvements:
+    ✓ Strong hook: "What if AI coding tools made developers 10x faster?"
+    ✓ All slides under 25 words
+    ✓ CTA: "Are you using AI coding tools yet? Drop your experience below"
+    
+    Recommendation: Approve - meets quality standards
+    ```
+  </Step>
+  
+  <Step title="Pipeline Continues">
+    Content approved → proceeds to next step (final approval checkpoint)
+  </Step>
+</Steps>
+
+**Max Review Cycles:**
+- If reviewer rejects more than `max_review_cycles`, Runner pauses
+- User is prompted:
+  ```
+  ⚠️ Review cycle limit reached (2/2)
+  
+  Latest feedback:
+  - Hook still not strong enough
+  - Needs more specific examples
+  
+  What should I do?
+  1. Accept current version and continue
+  2. Manually revise and retry review
+  3. Abort pipeline
+  ```
+
+<Warning>
+**Without on_reject:** If a step lacks `on_reject`, rejection stops the pipeline. Use this for critical failures where continuation doesn't make sense.
+</Warning>
+
+## Parallel Execution
+
+Multiple subagent steps can run in parallel:
+
+```yaml
+# step-06-create-content.md
+---
+execution: subagent
+agents:  # Multiple agents
+  - iago-instagram
+  - luna-linkedin
+---
+```
+
+**Execution:**
+
+```
+📱 Iago Instagram is working in the background...
+📝 Luna LinkedIn is working in the background...
+
+[Both agents work simultaneously]
+
+✓ Iago Instagram completed
+✓ Luna LinkedIn completed
+```
+
+Outputs:
+- `squads/tech-news-carousel/output/2026-03-13-143022/v1/instagram-carousel.md`
+- `squads/tech-news-carousel/output/2026-03-13-143022/v1/linkedin-post.md`
+
+Both files are available to the next step (reviewer).
+
+## Pipeline Completion
+
+When all steps finish:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Pipeline complete!
+📁 Run folder: squads/tech-news-carousel/output/2026-03-13-143022/
+📄 Outputs saved:
+   - v2/research-findings.md
+   - v2/angles-brief.yaml
+   - v2/instagram-carousel.md
+   - v2/linkedin-post.md
+   - v2/review-report.md
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+What would you like to do?
+● Run again (new topic)
+○ Edit this content
+○ Back to menu
+```
+
+**Post-completion:**
+
+<Steps>
+  <Step title="Update Dashboard State">
+    ```json
+    {
+      "status": "completed",
+      "agents": [
+        { "id": "pedro-pesquisa", "status": "done" },
+        { "id": "iago-instagram", "status": "done" },
+        ...
+      ]
+    }
+    ```
+  </Step>
+  
+  <Step title="Update Squad Memory">
+    Append to `_memory/memories.md`:
+    ```markdown
+    ## Run: 2026-03-13 14:30
+    
+    Topic: AI coding assistants comparison
+    Angle selected: Educational ("I tested Cursor for 30 days")
+    Review cycles: 1
+    Final score: 89/100
+    User approved: Yes
+    
+    Preferences detected:
+    - Prefers contrarian/educational angles over fear-based
+    - Wants specific examples over generic advice
+    - Values data points in content
+    ```
+  </Step>
+  
+  <Step title="Clean Up State File">
+    Wait 10 seconds (for dashboard animation), then delete `state.json`.
+    
+    Squad no longer appears as "running" in centralized dashboard.
+  </Step>
+</Steps>
+
+## Output Directory Structure
+
+After a run completes:
+
+```
+squads/tech-news-carousel/
+├── output/
+│   ├── 2026-03-10-091523/     # Previous run
+│   │   └── v1/
+│   │       ├── instagram-carousel.md
+│   │       └── linkedin-post.md
+│   ├── 2026-03-12-143011/     # Previous run
+│   │   ├── v1/
+│   │   └── v2/                # Had revision cycle
+│   └── 2026-03-13-143022/     # Latest run
+│       ├── v1/                # First attempt
+│       │   ├── research-findings.md
+│       │   ├── angles-brief.yaml
+│       │   ├── instagram-carousel.md
+│       │   ├── linkedin-post.md
+│       │   └── review-report.md
+│       └── v2/                # After revision
+│           ├── instagram-carousel.md
+│           ├── linkedin-post.md
+│           └── review-report.md
+```
+
+<Note>
+**Version folders only contain outputs that changed.** If a file wasn't regenerated (e.g., `research-findings.md` is only in `v1`), it's not copied to `v2`.
+</Note>
+
+## Reading Output Files
+
+Open any output file to see generated content:
+
+```bash
+# View latest Instagram carousel
+cat squads/tech-news-carousel/output/2026-03-13-143022/v2/instagram-carousel.md
+```
+
+**Example output:**
+
+```markdown
+# Instagram Carousel: AI Coding Assistants
+
+## Slide 1
+I tested Cursor for 30 days straight.
+
+Here's what nobody tells you about AI coding tools:
+
+## Slide 2
+→ Day 1: Skeptical
+"Just autocomplete on steroids"
+
+## Slide 3
+→ Day 10: Impressed
+Multi-file edits saved me 2 hours daily
+
+## Slide 4
+→ Day 20: Dependent
+Can't code without it anymore
+
+## Slide 5
+→ Day 30: Mind-blown
+AI agents writing entire features
+
+## Slide 6
+The truth?
+
+It's not about replacing developers.
+It's about 10xing the ones who adapt first.
+
+## Slide 7
+3 things that surprised me:
+
+1. Context awareness is scary good
+2. Learning curve is backwards
+3. It changes how you think about code
+
+## Slide 8
+Instead of "how do I write this?"
+
+You ask "what should this do?"
+
+The shift from implementation to architecture is real.
+
+## Slide 9
+Are you using AI coding tools yet?
+
+Drop your experience below 👇
+
+---
+
+**Design Notes:**
+- Slide size: 1080x1350px
+- Font: Clean sans-serif, high contrast
+- Slides 2-5: Emoji bullets for visual hierarchy
+- Slide 6: Text centered, emphasis on key phrase
+- Slide 9: Question + emoji CTA
+```
+
+## Running Again
+
+To run the same squad with a different topic:
+
+```
+/opensquad run tech-news-carousel
+```
+
+Pipeline starts fresh:
+- New run folder (new timestamp)
+- Clean slate (no memory of previous run's outputs)
+- Same checkpoints (you provide new inputs)
+
+Each run is independent and isolated.
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Subagent Fails" icon="triangle-exclamation">
+    If a subagent step fails:
+    
+    ```
+    ❌ Pedro Pesquisa encountered an error:
+    [Error: Web search API timeout]
+    
+    Retrying... (Attempt 2/2)
+    ```
+    
+    Runner retries once. If it fails again:
+    ```
+    ❌ Pedro Pesquisa failed after 2 attempts.
+    
+    What should I do?
+    1. Skip this step and continue
+    2. Retry manually with different input
+    3. Abort pipeline
+    ```
+  </Accordion>
+  
+  <Accordion title="Missing Step File" icon="file-slash">
+    If a pipeline step file is missing:
+    
+    ```
+    ❌ Step file not found: pipeline/steps/step-03-select-topic.md
+    
+    This squad may be corrupted. Run:
+    /opensquad edit tech-news-carousel
+    
+    Or recreate the squad from scratch.
+    ```
+  </Accordion>
+  
+  <Accordion title="Skill Not Installed" icon="puzzle-piece">
+    If a required skill is missing:
+    
+    ```
+    ❌ Skill 'instagram-api' is not installed.
+    
+    This squad requires the following skills:
+    - instagram-api (MCP server)
+    
+    Install now? (y/n)
+    ```
+    
+    If you type `y`, Runner reads `_opensquad/core/skills.engine.md` and follows installation instructions.
+  </Accordion>
+  
+  <Accordion title="Empty Company Context" icon="building">
+    If `_opensquad/_memory/company.md` is empty:
+    
+    ```
+    ⚠️ Company profile is empty.
+    
+    Squads work better with context about your company, audience, and brand.
+    
+    Run onboarding now? (y/n)
+    ```
+    
+    If you skip, squad runs but outputs are generic (no brand personalization).
+  </Accordion>
+</AccordionGroup>
+
+## Monitoring with Virtual Office
+
+While the squad runs, open the Virtual Office dashboard to see real-time progress:
+
+```bash
+# In a separate terminal
+npx serve squads/tech-news-carousel/dashboard
+```
+
+Open `http://localhost:3000` in your browser.
+
+**Dashboard shows:**
+- Agent desks (2x2 grid)
+- Current step label
+- Agent status (idle, working, delivering, done)
+- Handoff animations with messages
+- Progress bar (step X / total)
+
+<Info>
+The dashboard reads `state.json` in real-time. When the squad completes, `state.json` is deleted and the dashboard shows "No active squad".
+</Info>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Edit Squads" icon="pen-to-square" href="/squads/editing">
+    Modify agents, tasks, or pipeline after creation
+  </Card>
+  
+  <Card title="Squad Examples" icon="book-open" href="/squads/examples">
+    Explore real-world squad configurations
+  </Card>
+  
+  <Card title="Pipeline Deep Dive" icon="diagram-project" href="/concepts/pipelines">
+    Understand pipeline architecture and advanced patterns
+  </Card>
+  
+  <Card title="Agent Communication" icon="comments" href="/concepts/agents">
+    Learn how agents coordinate and share context
+  </Card>
+</CardGroup>

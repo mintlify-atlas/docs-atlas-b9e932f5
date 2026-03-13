@@ -1,0 +1,827 @@
+---
+title: Editing Squads
+description: Modify existing squads, add agents, adjust pipelines, and fine-tune task files
+icon: pen-to-square
+---
+
+After creating a squad, you can modify its structure, agents, pipeline, or reference materials. OpenSquad supports both guided editing via the Architect and manual file editing.
+
+## Starting Squad Editing
+
+### Method 1: Guided Editing (Recommended)
+
+```
+/opensquad edit <squad-name>
+```
+
+Example:
+```
+/opensquad edit tech-news-carousel
+```
+
+The **Architect** agent loads your squad and presents editing options:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Editing squad: Tech News Carousel
+
+Current structure:
+🤖 5 agents
+📋 9 pipeline steps
+🎯 2 formats (instagram-feed, linkedin-post)
+
+What would you like to change?
+1. Add an agent
+2. Remove an agent
+3. Modify an agent
+4. Adjust pipeline steps
+5. Add/remove formats
+6. Update reference materials
+7. Change performance mode
+8. Other (describe)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Method 2: Manual File Editing
+
+Navigate to your squad directory and edit files directly:
+
+```bash
+squads/tech-news-carousel/
+├── squad.yaml              # Squad definition
+├── squad-party.csv         # Agent manifest
+├── agents/                 # Agent definitions
+├── pipeline/
+│   ├── pipeline.yaml       # Pipeline structure
+│   ├── steps/              # Step files
+│   └── data/               # Reference materials
+```
+
+<Warning>
+**Manual editing requires understanding the file formats.** If you break YAML syntax or reference non-existent agents, the squad won't run. Always test with `/opensquad run <name>` after manual changes.
+</Warning>
+
+## Common Editing Tasks
+
+### Adding an Agent
+
+#### Guided Approach
+
+```
+You: 1  (Add an agent)
+
+Architect: What role should this agent fill?
+
+You: Designer to create images for the carousels
+
+Architect: Got it. I'll add a designer agent.
+
+Where should this agent fit in the pipeline?
+1. After content creation (before review)
+2. After content approval (parallel with publishing)
+3. Other (specify)
+
+You: 1
+```
+
+Architect generates:
+- New agent file: `agents/diana-design.agent.md`
+- Task files: `agents/diana-design/tasks/generate-visuals.md`
+- New pipeline step: `pipeline/steps/step-07-design-visuals.md`
+- Updates `squad-party.csv`
+- Updates `squad.yaml` (increments agent count)
+- Renumbers subsequent steps
+
+```
+✓ Added agent: Diana Design (🎨)
+✓ Updated pipeline: inserted step-07-design-visuals.md
+✓ Updated squad-party.csv
+
+New pipeline flow:
+[...] → [Create Content] → 🛑 Approve Content → [Diana: Design Visuals] → 
+🛑 Approve Visuals → [Review] → 🛑 Final Approval
+
+Test the changes: /opensquad run tech-news-carousel
+```
+
+#### Manual Approach
+
+<Steps>
+  <Step title="Create Agent File">
+    Create `agents/diana-design.agent.md`:
+    
+    ```yaml
+    ---
+    id: "squads/tech-news-carousel/agents/diana-design"
+    name: "Diana Design"
+    title: "Visual Designer"
+    icon: "🎨"
+    squad: "tech-news-carousel"
+    execution: subagent
+    skills:
+      - canva  # Or other design skill
+    tasks:
+      - tasks/generate-visuals.md
+    ---
+    
+    # Diana Design
+    
+    ## Persona
+    
+    ### Role
+    Visual designer specializing in social media graphics...
+    
+    [... Full persona, principles, voice guidance, anti-patterns, quality criteria]
+    ```
+  </Step>
+  
+  <Step title="Create Task File">
+    Create `agents/diana-design/tasks/generate-visuals.md`:
+    
+    ```markdown
+    ---
+    task: "Generate Visuals"
+    order: 1
+    input: |
+      - carousel_content: Approved carousel text
+      - brand_guidelines: Color palette, fonts, logo
+    output: |
+      - image_files: 9 PNG files (1080x1350px)
+      - design_notes: Font sizes, colors used
+    ---
+    
+    # Generate Visuals
+    
+    Create carousel images following brand guidelines...
+    
+    [... Process, Output Format, Quality Criteria, Veto Conditions]
+    ```
+  </Step>
+  
+  <Step title="Update squad-party.csv">
+    Add a row:
+    ```csv
+    path,displayName,icon
+    ./agents/pedro-pesquisa.agent.md,Pedro Pesquisa,🔍
+    ./agents/ivan-ideia.agent.md,Ivan Ideia,💡
+    ./agents/iago-instagram.agent.md,Iago Instagram,📱
+    ./agents/luna-linkedin.agent.md,Luna LinkedIn,📝
+    ./agents/diana-design.agent.md,Diana Design,🎨
+    ./agents/renata-revisao.agent.md,Renata Revisão,✅
+    ```
+  </Step>
+  
+  <Step title="Create Pipeline Step">
+    Create `pipeline/steps/step-07-design-visuals.md`:
+    
+    ```yaml
+    ---
+    execution: subagent
+    agent: diana-design
+    inputFile: squads/tech-news-carousel/output/instagram-carousel.md
+    outputFile: squads/tech-news-carousel/output/carousel-images.zip
+    model_tier: powerful
+    ---
+    
+    # Step 07: Design Visuals
+    
+    ## Context Loading
+    
+    Load these files before executing:
+    - `squads/tech-news-carousel/output/instagram-carousel.md` - Approved carousel text
+    - `pipeline/data/brand-guidelines.md` - Visual identity guidelines
+    
+    [... Instructions, Output Format, Output Example, Quality Criteria]
+    ```
+  </Step>
+  
+  <Step title="Update pipeline.yaml">
+    Edit `pipeline/pipeline.yaml` to insert the new step:
+    
+    ```yaml
+    steps:
+      - step-01-research-focus.md
+      - step-02-research.md
+      - step-03-select-topic.md
+      - step-04-generate-angles.md
+      - step-05-select-angle.md
+      - step-06-create-content.md
+      - step-07-design-visuals.md        # NEW
+      - step-08-approve-visuals.md       # NEW (checkpoint)
+      - step-09-review.md                # Renumbered from 08
+      - step-10-final-approval.md        # Renumbered from 09
+    ```
+  </Step>
+  
+  <Step title="Update squad.yaml">
+    If the new agent uses skills:
+    
+    ```yaml
+    skills:
+      - web_search
+      - web_fetch
+      - canva  # NEW
+    ```
+  </Step>
+</Steps>
+
+### Removing an Agent
+
+#### Guided Approach
+
+```
+You: 2  (Remove an agent)
+
+Architect: Which agent should I remove?
+1. Pedro Pesquisa (Researcher)
+2. Ivan Ideia (Angle Generator)
+3. Iago Instagram (Instagram Creator)
+4. Luna LinkedIn (LinkedIn Creator)
+5. Renata Revisão (Reviewer)
+
+You: 4
+
+Architect: Removing Luna LinkedIn will:
+- Delete agents/luna-linkedin.agent.md and all tasks
+- Remove step-06-create-linkedin-post.md
+- Update pipeline flow
+- Remove 'linkedin-post' from formats
+
+Continue? (y/n)
+
+You: y
+```
+
+#### Manual Approach
+
+<Steps>
+  <Step title="Delete Agent Files">
+    ```bash
+    rm -rf squads/tech-news-carousel/agents/luna-linkedin.agent.md
+    rm -rf squads/tech-news-carousel/agents/luna-linkedin/
+    ```
+  </Step>
+  
+  <Step title="Update squad-party.csv">
+    Remove the agent's row:
+    ```csv
+    path,displayName,icon
+    ./agents/pedro-pesquisa.agent.md,Pedro Pesquisa,🔍
+    ./agents/ivan-ideia.agent.md,Ivan Ideia,💡
+    ./agents/iago-instagram.agent.md,Iago Instagram,📱
+    # REMOVED: ./agents/luna-linkedin.agent.md,Luna LinkedIn,📝
+    ./agents/renata-revisao.agent.md,Renata Revisão,✅
+    ```
+  </Step>
+  
+  <Step title="Remove Pipeline Step(s)">
+    Delete step file(s) that reference the agent:
+    ```bash
+    rm squads/tech-news-carousel/pipeline/steps/step-06-create-linkedin-post.md
+    ```
+    
+    If the agent was part of a parallel step, edit the step file to remove the agent reference.
+  </Step>
+  
+  <Step title="Update pipeline.yaml">
+    Remove the step from the list:
+    ```yaml
+    steps:
+      - step-01-research-focus.md
+      - step-02-research.md
+      - step-03-select-topic.md
+      - step-04-generate-angles.md
+      - step-05-select-angle.md
+      # REMOVED: step-06-create-linkedin-post.md
+      - step-07-review.md
+      - step-08-final-approval.md
+    ```
+  </Step>
+  
+  <Step title="Update squad.yaml">
+    Remove format if no longer used:
+    ```yaml
+    # Before
+    formats:
+      - instagram-feed
+      - linkedin-post
+    
+    # After
+    formats:
+      - instagram-feed
+    ```
+  </Step>
+</Steps>
+
+### Modifying an Agent
+
+#### Adjusting Agent Persona
+
+Edit `agents/{agent-id}.agent.md` directly:
+
+```markdown
+## Persona
+
+### Role
+[Update the role description]
+
+### Identity
+[Refine character traits, background, approach]
+
+### Communication Style
+[Adjust tone, formatting preferences]
+```
+
+<Tip>
+**Common persona adjustments:**
+- Make agent more/less formal
+- Add domain expertise ("Specializes in B2B SaaS marketing")
+- Change output preferences ("Always provides 3 alternatives")
+- Adjust decision-making style ("Conservative vs experimental")
+</Tip>
+
+#### Adding/Removing Tasks
+
+Edit the agent's frontmatter:
+
+```yaml
+# Before (Alta Performance)
+tasks:
+  - tasks/create-carousel.md
+  - tasks/optimize-carousel.md
+  - tasks/polish-hooks.md
+
+# After (Consolidated to Econômico)
+tasks:
+  - tasks/create-carousel.md  # Optimization now embedded
+```
+
+If removing a task, delete the task file:
+```bash
+rm squads/tech-news-carousel/agents/iago-instagram/tasks/optimize-carousel.md
+```
+
+If adding a task, create the task file following the [Task File Format](/development/agent-yaml-format#task-file-format).
+
+#### Changing Execution Mode
+
+Edit agent frontmatter:
+
+```yaml
+# Before (background)
+execution: subagent
+
+# After (inline)
+execution: inline
+```
+
+Also update the corresponding pipeline step's frontmatter:
+
+```yaml
+# In pipeline/steps/step-06-create-content.md
+---
+execution: inline  # Changed from subagent
+agent: iago-instagram
+---
+```
+
+### Adjusting Pipeline Steps
+
+#### Reordering Steps
+
+Edit `pipeline/pipeline.yaml`:
+
+```yaml
+# Before
+steps:
+  - step-04-generate-angles.md
+  - step-05-select-angle.md
+  - step-06-create-content.md
+
+# After (swap angle selection and creation)
+steps:
+  - step-04-create-content.md  # Now uses default angle
+  - step-05-generate-alternatives.md
+  - step-06-select-best.md
+```
+
+<Warning>
+Reordering steps requires updating `inputFile` references. Each step's `inputFile` must match the previous step's `outputFile`.
+</Warning>
+
+#### Adding Checkpoints
+
+Create a checkpoint step file:
+
+```yaml
+---
+type: checkpoint
+---
+
+# Checkpoint: Approve Visuals
+
+Review the generated carousel images:
+
+[Images will be displayed here]
+
+Approve these visuals?
+1. Yes, looks great
+2. No, regenerate with changes
+
+You:
+```
+
+Insert into `pipeline.yaml`:
+
+```yaml
+steps:
+  - step-06-create-content.md
+  - step-07-design-visuals.md
+  - step-08-approve-visuals.md  # NEW checkpoint
+  - step-09-review.md
+```
+
+#### Removing Checkpoints
+
+Delete the checkpoint step file and remove from `pipeline.yaml`. Ensure the next step's `inputFile` now references the previous non-checkpoint step's output.
+
+### Updating Reference Materials
+
+Reference materials live in `pipeline/data/`:
+
+```
+pipeline/data/
+├── research-brief.md       # Domain knowledge
+├── domain-framework.md     # Operational methodology
+├── quality-criteria.md     # Scoring standards
+├── output-examples.md      # Real examples
+├── anti-patterns.md        # Common mistakes
+└── tone-of-voice.md        # Voice guidelines
+```
+
+#### Adding New Reference Files
+
+Create a file in `pipeline/data/`:
+
+```markdown
+# pipeline/data/brand-guidelines.md
+
+## Visual Identity
+
+### Color Palette
+- Primary: #1a1a1a (Dark)
+- Accent: #0066cc (Blue)
+- Background: #ffffff (White)
+
+### Typography
+- Headings: Inter Bold
+- Body: Inter Regular
+- Min size: 18px (mobile readability)
+
+[... Full brand guidelines]
+```
+
+Reference in agent or step files:
+
+```markdown
+## Context Loading
+
+Load these files before executing:
+- `pipeline/data/brand-guidelines.md` - Visual identity standards
+```
+
+#### Editing Existing Reference Files
+
+Edit files directly. Changes apply to all subsequent runs.
+
+**Example: Updating Quality Criteria**
+
+```markdown
+# pipeline/data/quality-criteria.md
+
+## Instagram Carousel Quality Standards
+
+### Hook (Slide 1)
+- [ ] Under 12 words
+- [ ] Creates curiosity or promises value
+- [ ] Uses question, bold statement, or contrarian take
+- **NEW:** [ ] Includes specific number or timeframe ("30 days", "5 things")
+
+### Body Slides
+- [ ] 15-25 words per slide
+- **NEW:** [ ] Uses bullet points or numbered lists for scannability
+- [ ] One insight per slide
+
+[... Rest of criteria]
+```
+
+Reviewers will use updated criteria on the next run.
+
+### Changing Performance Mode
+
+Convert a squad from **Econômico** to **Alta Performance** (or vice versa):
+
+#### Econômico → Alta Performance
+
+<Steps>
+  <Step title="Add Task Decomposition">
+    For each agent, split monolithic work into 3-5 tasks.
+    
+    **Before (Econômico):**
+    ```yaml
+    tasks:
+      - tasks/create-carousel.md  # Does everything
+    ```
+    
+    **After (Alta Performance):**
+    ```yaml
+    tasks:
+      - tasks/create-carousel.md
+      - tasks/optimize-carousel.md
+      - tasks/polish-hooks.md
+    ```
+    
+    Create the new task files.
+  </Step>
+  
+  <Step title="Add Platform-Specific Agents">
+    If using generic "Writer" agent, split into platform-specific agents:
+    
+    **Before:**
+    - Writer (produces both Instagram and LinkedIn)
+    
+    **After:**
+    - Iago Instagram (Instagram only)
+    - Luna LinkedIn (LinkedIn only)
+    
+    Create separate agent files and update `squad-party.csv`.
+  </Step>
+  
+  <Step title="Enhance Reviewer">
+    Split reviewer tasks:
+    
+    **Before:**
+    ```yaml
+    tasks:
+      - tasks/review.md  # Combined scoring + feedback
+    ```
+    
+    **After:**
+    ```yaml
+    tasks:
+      - tasks/score-content.md
+      - tasks/generate-feedback.md
+    ```
+  </Step>
+  
+  <Step title="Update squad.yaml Metadata">
+    ```yaml
+    performance_mode: alta  # From: economico
+    ```
+  </Step>
+</Steps>
+
+#### Alta Performance → Econômico
+
+Reverse the process: consolidate tasks, merge platform-specific agents into generic agents, combine reviewer tasks.
+
+### Adding Skills and Integrations
+
+Add a skill to your squad:
+
+#### Method 1: Via Architect
+
+```
+/opensquad edit tech-news-carousel
+
+You: 8 (Other)
+
+You: Add Instagram publishing skill
+
+Architect: I'll add the instagram-api skill.
+
+Checking catalog...
+
+Found: instagram-api (MCP server)
+Publishes posts and carousels to Instagram Business accounts.
+
+Install now? (y/n)
+
+You: y
+
+Architect:
+[Follows skills.engine.md → Operation 2]
+- Installed instagram-api MCP server
+- Updated .claude/settings.local.json
+- Created skills/instagram-api/SKILL.md
+- Added to squad.yaml
+
+✓ Skill ready. You can now reference it in agent definitions:
+  skills:
+    - instagram-api
+```
+
+#### Method 2: Manual Installation
+
+<Steps>
+  <Step title="Install Skill">
+    Follow [Skills Guide](/concepts/skills) to install:
+    
+    ```bash
+    npx skills add instagram-api
+    ```
+  </Step>
+  
+  <Step title="Add to squad.yaml">
+    ```yaml
+    skills:
+      - web_search
+      - web_fetch
+      - instagram-api  # NEW
+    ```
+  </Step>
+  
+  <Step title="Reference in Agent">
+    Edit agent frontmatter:
+    
+    ```yaml
+    # agents/publisher.agent.md
+    skills:
+      - instagram-api
+    ```
+  </Step>
+  
+  <Step title="Use in Pipeline Step">
+    When the Pipeline Runner executes this agent's step, skill instructions from `skills/instagram-api/SKILL.md` are automatically injected.
+  </Step>
+</Steps>
+
+## Testing Changes
+
+After editing, always test:
+
+```
+/opensquad run tech-news-carousel
+```
+
+**Watch for errors:**
+
+```
+❌ Error in step-06-create-content.md:
+Agent 'luna-linkedin' not found in squad-party.csv
+
+→ Fix: Add agent to squad-party.csv or remove step from pipeline.yaml
+```
+
+```
+❌ Error loading tasks for agent 'iago-instagram':
+File not found: tasks/optimize-carousel.md
+
+→ Fix: Create the task file or remove from agent frontmatter
+```
+
+```
+❌ Error in step-07-review.md:
+inputFile references non-existent output: squads/.../linkedin-post.md
+
+→ Fix: Update inputFile to match actual outputFile from previous step
+```
+
+<Tip>
+Use `/opensquad validate tech-news-carousel` (if your OpenSquad version supports it) to check for structural issues without running the full pipeline.
+</Tip>
+
+## Version Control for Squads
+
+Squad files are plain text — commit them to Git:
+
+```bash
+git add squads/tech-news-carousel/
+git commit -m "Add designer agent and visual approval checkpoint"
+```
+
+**Recommended .gitignore:**
+
+```
+# .gitignore
+squads/*/output/          # Generated content (don't commit)
+squads/*/state.json       # Runtime state (temporary)
+squads/*/_investigations/ # Sherlock data (can be large)
+```
+
+**Commit these files:**
+- `squad.yaml`
+- `squad-party.csv`
+- `agents/*.agent.md`
+- `agents/*/tasks/*.md`
+- `pipeline/pipeline.yaml`
+- `pipeline/steps/*.md`
+- `pipeline/data/*.md`
+
+## Rolling Back Changes
+
+If an edit breaks your squad:
+
+### Option 1: Git Revert
+
+```bash
+git log squads/tech-news-carousel/
+git checkout <commit-hash> squads/tech-news-carousel/
+```
+
+### Option 2: Regenerate from Scratch
+
+```
+/opensquad delete tech-news-carousel
+/opensquad create "[original description]"
+```
+
+Answer discovery questions the same way to recreate the original squad.
+
+<Warning>
+**Deleting a squad also deletes all outputs.** Back up `squads/tech-news-carousel/output/` before deleting if you need to preserve generated content.
+</Warning>
+
+## Advanced Editing Patterns
+
+<AccordionGroup>
+  <Accordion title="Creating Squad Templates">
+    Build reusable squad templates:
+    
+    1. Create a generic squad (e.g., "content-creation-template")
+    2. Parameterize agent names and references
+    3. Add placeholder values in reference materials
+    4. Copy template folder to create new squads:
+       ```bash
+       cp -r squads/content-creation-template squads/new-squad
+       ```
+    5. Find/replace template values with actual values
+    
+    **Template variables:**
+    ```yaml
+    squad:
+      code: "{{SQUAD_CODE}}"
+      name: "{{SQUAD_NAME}}"
+      description: "{{SQUAD_DESCRIPTION}}"
+    ```
+  </Accordion>
+  
+  <Accordion title="Multi-Environment Squads">
+    Use different reference materials per environment:
+    
+    ```
+    pipeline/data/
+    ├── tone-of-voice.staging.md     # Informal, experimental
+    ├── tone-of-voice.production.md  # Professional, brand-aligned
+    ├── quality-criteria.staging.md  # Relaxed thresholds
+    └── quality-criteria.production.md  # Strict thresholds
+    ```
+    
+    Swap references before running:
+    ```bash
+    # Staging
+    cp pipeline/data/tone-of-voice.staging.md pipeline/data/tone-of-voice.md
+    
+    # Production
+    cp pipeline/data/tone-of-voice.production.md pipeline/data/tone-of-voice.md
+    ```
+  </Accordion>
+  
+  <Accordion title="Conditional Pipeline Paths">
+    Create branching pipelines with conditional steps:
+    
+    ```yaml
+    # pipeline/pipeline.yaml
+    steps:
+      - step-01-research.md
+      - step-02-select-format.md  # Checkpoint: choose format
+      - step-03a-create-instagram.md  # If user chose Instagram
+      - step-03b-create-linkedin.md   # If user chose LinkedIn
+      - step-04-review.md
+    ```
+    
+    In checkpoint, user selection determines which step runs next.
+    
+    **Note:** This requires custom pipeline runner logic. Standard runner executes all steps sequentially.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Squad Examples" icon="book-open" href="/squads/examples">
+    See real-world squad configurations and editing patterns
+  </Card>
+  
+  <Card title="Agent YAML Format" icon="file-code" href="/development/agent-yaml-format">
+    Deep dive into agent and task file structure
+  </Card>
+  
+  <Card title="Pipeline Configuration" icon="diagram-project" href="/development/pipeline-configuration">
+    Advanced pipeline patterns and step configuration
+  </Card>
+  
+  <Card title="Creating Skills" icon="puzzle-piece" href="/development/creating-skills">
+    Build custom skills for your squads
+  </Card>
+</CardGroup>

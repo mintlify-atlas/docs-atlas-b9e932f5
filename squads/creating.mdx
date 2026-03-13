@@ -1,0 +1,860 @@
+---
+title: Creating Squads
+description: Step-by-step guide to creating squads with the Architect agent
+icon: wand-magic-sparkles
+---
+
+Creating a squad in OpenSquad is a guided conversation with the **Architect** agent. You describe what you need in natural language, and the Architect designs a complete multi-agent team optimized for your use case.
+
+## Overview
+
+The squad creation process has 5 phases:
+
+<Steps>
+  <Step title="Discovery">
+    The Architect asks 3-4 questions to understand your needs, audience, and quality requirements.
+  </Step>
+  
+  <Step title="Investigation (Optional)">
+    If you provide reference URLs, the Sherlock investigator analyzes real content patterns from successful profiles.
+  </Step>
+  
+  <Step title="Research">
+    The Architect researches domain knowledge: frameworks, best practices, quality criteria, and anti-patterns.
+  </Step>
+  
+  <Step title="Design">
+    The Architect presents the squad design for your approval: agents, pipeline, tasks, and reference materials.
+  </Step>
+  
+  <Step title="Build">
+    All squad files are generated atomically: agent definitions, pipeline steps, task files, and reference materials.
+  </Step>
+</Steps>
+
+<Info>
+The entire creation process takes 3-5 minutes. You approve the design before any files are created.
+</Info>
+
+## Starting Squad Creation
+
+### Method 1: Interactive Menu
+
+Open the OpenSquad menu:
+
+```
+/opensquad
+```
+
+Select **"Create a new squad"** from the menu.
+
+### Method 2: Direct Command
+
+Create a squad directly:
+
+```
+/opensquad create
+```
+
+Or describe your need immediately:
+
+```
+/opensquad create "Squad that creates Instagram carousels from trending AI news"
+```
+
+## Phase 1: Discovery Questions
+
+The Architect asks one question at a time. Answer each before moving to the next.
+
+### Question 1: Purpose
+
+```
+Architect: What should this squad do? Describe the end result you want.
+
+You: Create Instagram carousels analyzing weekly tech news
+```
+
+<Tip>
+**Be specific about the output format and domain.** Instead of "social media content", say "LinkedIn thought leadership articles about B2B SaaS" or "Twitter threads analyzing crypto trends".
+</Tip>
+
+### Question 2: Audience/Context
+
+Based on your purpose, the Architect asks about audience or platform:
+
+```
+Architect: Who is this content for?
+1. Current customers
+2. Potential leads
+3. General audience
+4. Other
+
+You: 2
+```
+
+<Note>
+The Architect uses multiple choice when possible to save time. Reply with the number.
+</Note>
+
+### Question 3: References (Optional)
+
+```
+Architect: Do you have any examples or references you'd like the squad to follow?
+Share URLs (Instagram, YouTube, Twitter/X, LinkedIn) or type 'skip'.
+
+You: https://instagram.com/example-creator/
+```
+
+If you provide URLs, the Architect launches **Sherlock** investigators in the background to analyze:
+- Structural patterns (hooks, CTAs, slide counts)
+- Engagement data (what performs best)
+- Voice and tone patterns
+- Content frameworks
+
+<Accordion title="Sherlock Investigation Modes">
+**For Instagram URLs:**
+
+If you provide a specific post URL (`/p/`, `/reel/`, `/tv/`):
+```
+Architect: Detected a post URL. Investigation goal?
+1. Single post - use only this post as reference (~1-2 min)
+2. Profile scan - analyze 5-10 posts from profile (~5-10 min)
+
+You: 2
+```
+
+If you provide a profile URL:
+```
+Architect: How many Instagram posts should I analyze?
+1. 1 post - most recent (~2-3 min)
+2. 5-10 posts - pattern analysis, recommended (~5-10 min)
+
+You: 2
+```
+
+**For YouTube, Twitter/X, LinkedIn:**
+
+The Architect asks about content types and quantity:
+- **YouTube**: Long videos vs Shorts, 5-10 videos recommended
+- **Twitter/X**: Tweets vs Threads, 15-20 recommended
+- **LinkedIn**: Posts vs Articles, 10-15 recommended
+</Accordion>
+
+Sherlock runs in parallel with Phase 2 (Research) — you don't wait.
+
+### Question 4: Performance Mode
+
+```
+Architect: What quality level do you want for this squad?
+1. Alta Performance (Recommended) - Full pipeline with deep analysis,
+   multiple formats per platform, dedicated optimization tasks, and
+   complete review. Higher token cost - produces premium results with A/B variants.
+2. Econômico - Streamlined pipeline with basic analysis, main format only,
+   and lightweight review. Reduced token cost - faster execution, still good quality.
+
+You: 1
+```
+
+**Performance mode affects squad design:**
+
+| Mode | Agents | Tasks per Agent | Review | Token Cost |
+|------|--------|-----------------|--------|------------|
+| **Alta Performance** | Platform-specific ("Instagram Writer", "LinkedIn Writer") | 3-5 tasks with dedicated optimization | Full scoring + detailed feedback | High |
+| **Econômico** | Generic ("Writer") | 1-2 tasks with embedded optimization | Combined single-pass review | Low |
+
+<Warning>
+Choose **Alta Performance** for production content you'll publish. Use **Econômico** for drafts and experimentation.
+</Warning>
+
+### Question 5: Target Formats (Content Squads Only)
+
+For content creation squads, the Architect asks about platforms:
+
+```
+Architect: Which platforms/formats should this squad produce content for?
+
+Instagram:
+1. Instagram Feed - Carousels and single image posts
+2. Instagram Reels - Short-form vertical video
+3. Instagram Stories - Ephemeral 24h content
+
+LinkedIn:
+4. LinkedIn Post - Text posts and document carousels
+5. LinkedIn Article - Long-form content
+
+Twitter/X:
+6. Twitter/X Post - Single tweets
+7. Twitter/X Thread - Multi-tweet threads
+
+Other:
+8. YouTube Script - Long-form video
+9. Blog Post - Content marketing
+10. Email Newsletter - Recurring newsletters
+
+Select one or multiple numbers (space-separated): 1 4
+```
+
+<Note>
+The Architect reads available formats from `_opensquad/core/best-practices/` and presents them dynamically. Custom format files can be added there.
+</Note>
+
+## Phase 1.5: Investigation (If URLs Provided)
+
+If you provided reference URLs in Phase 1, Sherlock investigators run in parallel:
+
+```
+🔍 Sherlock is investigating 1 profile...
+Estimated time: ~5-10 minutes (profile scan).
+While Sherlock works, I'll start domain research.
+```
+
+**What Sherlock Extracts:**
+
+For each profile, Sherlock creates:
+1. **`raw-content.md`** - Full transcripts/text of analyzed content with metadata
+2. **`pattern-analysis.md`** - Structural patterns, hooks, CTAs, engagement data
+
+After all profiles complete, Sherlock generates:
+3. **`consolidated-analysis.md`** - Cross-profile patterns and recommended frameworks
+
+This data enriches agent definitions with **real examples** instead of generic templates.
+
+<Accordion title="Example: Sherlock Pattern Analysis">
+```markdown
+# Pattern Analysis: @example-creator
+
+## Content Structure Patterns
+
+### Hook Patterns (First Slide/Line)
+- "I spent $X on Y - here's what happened"
+- "X things nobody tells you about Y"
+- "The truth about X (it's not what you think)"
+
+Average hook length: 8-12 words
+Most engaging: Question-based hooks (32% higher saves)
+
+## Slide Breakdown (Carousels)
+- Average slides: 7.2
+- Slide 1: Hook + context
+- Slides 2-6: Numbered insights with visual hierarchy
+- Slide 7: CTA + reinforcement
+
+## CTAs
+- 89% end with question to audience
+- Common: "What's your experience with X?"
+- Always tag 1-2 relevant accounts
+
+## Voice & Tone
+- Conversational, uses "you" directly
+- Short sentences (8-15 words avg)
+- Avoids jargon, explains technical terms
+- Uses analogies for complex concepts
+```
+</Accordion>
+
+## Phase 2: Research
+
+The Architect researches domain knowledge for 1-2 minutes:
+
+```
+🔍 Researching 4 knowledge domains... This takes 1-2 minutes.
+
+Domains:
+1. Copywriting for Instagram
+2. Instagram engagement psychology
+3. Viral content frameworks
+4. Content quality evaluation
+```
+
+**What the Architect Researches:**
+
+<AccordionGroup>
+  <Accordion title="Frameworks and Methodologies" icon="book">
+    Searches for `"{domain} framework"` and `"{domain} best practices"`
+    
+    Extracts:
+    - Named frameworks (e.g., AIDA, PAS, StoryBrand)
+    - Step-by-step processes
+    - Proven methodologies
+    
+    Minimum: 3 unique sources per domain
+  </Accordion>
+  
+  <Accordion title="Output Examples" icon="file-lines">
+    Searches for `"{domain} examples"` and `"best {content type} examples"`
+    
+    Extracts:
+    - Real examples of high-quality output
+    - These become Output Examples in agent definitions
+  </Accordion>
+  
+  <Accordion title="Common Mistakes" icon="triangle-exclamation">
+    Searches for `"{domain} mistakes to avoid"` and `"{domain} anti-patterns"`
+    
+    Extracts:
+    - Specific errors practitioners make
+    - Explanations of why they're harmful
+    - These become Anti-Patterns in agent definitions
+  </Accordion>
+  
+  <Accordion title="Quality Benchmarks" icon="award">
+    Searches for `"{domain} quality criteria"` and `"how to evaluate {output type}"`
+    
+    Extracts:
+    - Scoring criteria
+    - Evaluation rubrics
+    - Acceptance thresholds
+    - These become Quality Criteria for agents and reviewers
+  </Accordion>
+  
+  <Accordion title="Domain Vocabulary" icon="language">
+    From all research, collects:
+    - Terms professionals always use
+    - Terms that signal amateur work
+    - These become Voice Guidance in agent definitions
+  </Accordion>
+</AccordionGroup>
+
+Research is compiled into `pipeline/data/research-brief.md` in your squad.
+
+## Phase 3: Extraction
+
+The Architect transforms research into operational artifacts:
+
+```
+Extracting operational frameworks for each agent...
+```
+
+**For Each Agent:**
+
+1. **Operational Framework** - Step-by-step process (5+ steps)
+2. **Output Examples** - 2 complete, realistic examples (15+ lines each)
+3. **Anti-Patterns** - 4+ "Never Do" items with explanations, 3+ "Always Do" items
+4. **Voice Guidance** - 5+ terms to always use, 3+ terms to never use, 2+ tone rules
+5. **Quality Criteria** - Specific, measurable criteria with thresholds
+
+**Squad-Level Artifacts:**
+
+6. **`domain-framework.md`** - Complete operational framework for the domain
+7. **`quality-criteria.md`** - Comprehensive quality criteria with scoring
+8. **`output-examples.md`** - 2-3 complete examples of final squad output
+9. **`anti-patterns.md`** - Domain mistakes compiled from research
+10. **`tone-of-voice.md`** - (Content squads) 6 standard tone options
+
+<Note>
+If Sherlock ran in Phase 1.5, these artifacts are **enriched with real data** from the analyzed profiles instead of generic best practices.
+</Note>
+
+## Phase 4: Design Presentation
+
+The Architect presents the complete squad design:
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+I'll create a squad with 5 agents:
+
+1. 🔍 Pedro Pesquisa — Trend Researcher
+   Discovers trending tech topics and ranks by engagement potential
+   Tasks: find-trends.md → rank-topics.md
+   Execution: subagent (background)
+   
+2. 💡 Ivan Ideia — Angle Generator
+   Creates 5 distinct content angles from selected story
+   Tasks: generate-angles.md
+   Execution: inline
+   
+3. 📱 Iago Instagram — Instagram Carousel Creator
+   Produces carousel posts optimized for Instagram algorithm
+   Tasks: create-carousel.md → optimize-carousel.md → polish-hooks.md
+   Format: instagram-feed
+   Execution: subagent (background)
+   
+4. 📝 Luna LinkedIn — LinkedIn Post Creator
+   Produces professional posts for LinkedIn engagement
+   Tasks: create-post.md → optimize-post.md
+   Format: linkedin-post
+   Execution: subagent (background)
+   
+5. ✅ Renata Revisão — Quality Reviewer
+   Ensures content meets brand standards and engagement criteria
+   Tasks: score-content.md → generate-feedback.md
+   Execution: inline
+
+Pipeline:
+[Research] → 🛑 Select Topic → [Ivan: generate angles] → 
+🛑 Select Angle → [Iago + Luna create content] → 🛑 Approve Content → 
+[Review] → 🛑 Final Approval
+
+Formats: instagram-feed, linkedin-post
+Mode: Alta Performance
+
+Reference materials:
+- pipeline/data/research-brief.md
+- pipeline/data/domain-framework.md
+- pipeline/data/quality-criteria.md
+- pipeline/data/output-examples.md
+- pipeline/data/anti-patterns.md
+- pipeline/data/tone-of-voice.md
+
+Skills:
+- web_search (native)
+- web_fetch (native)
+
+Investigation:
+✓ Analyzed 1 profile (Instagram @example-creator)
+✓ Extracted patterns from 8 carousel posts
+✓ Real hooks, CTAs, and structures embedded in agent definitions
+
+Does this look good?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### Understanding the Design
+
+<AccordionGroup>
+  <Accordion title="Agent Names" icon="signature">
+    Every agent has a humorous, memorable two-word alliterative name:
+    
+    **Format:** "FirstName LastName" — both words start with the same letter
+    
+    **Examples (Portuguese):**
+    - Pedro Pesquisa (Researcher)
+    - Guilherme Gancho (Copywriter)
+    - Renata Revisão (Reviewer)
+    - Iago Instagram (Instagram Creator)
+    
+    **Examples (English):**
+    - Rita Research (Researcher)
+    - Clara Copy (Copywriter)
+    - Roger Review (Reviewer)
+    - Ivy Idea (Ideator)
+    
+    Each agent in the squad uses a different initial letter. The Architect generates unique names every time.
+  </Accordion>
+  
+  <Accordion title="Task Decomposition" icon="list-check">
+    **Alta Performance** agents break work into granular tasks:
+    
+    **Researcher:**
+    - `find-trends.md` → `rank-topics.md` (2 tasks)
+    
+    **Creator:**
+    - `create-carousel.md` → `optimize-carousel.md` → `polish-hooks.md` (3 tasks)
+    
+    **Reviewer:**
+    - `score-content.md` → `generate-feedback.md` (2 tasks)
+    
+    **Econômico** agents combine these into 1-2 tasks:
+    - `find-and-rank-trends.md` (1 task)
+    - `create-carousel.md` (optimization embedded)
+    - `review.md` (scoring + feedback combined)
+  </Accordion>
+  
+  <Accordion title="Execution Modes" icon="gears">
+    **Subagent (Background):**
+    - Research-heavy tasks (data gathering, web search)
+    - Content creation (writing, generating angles)
+    - Runs in parallel with other subagents
+    - Uses fast model tier for data extraction, powerful tier for creative work
+    
+    **Inline (Main Conversation):**
+    - User-facing interactions (angle presentation)
+    - Quick decisions (content approval)
+    - Review and feedback (scoring, recommendations)
+  </Accordion>
+  
+  <Accordion title="Pipeline Checkpoints" icon="hand">
+    **Mandatory checkpoints:**
+    
+    1. **Research Focus** - Before researcher (define topic + time range)
+    2. **Topic/Story Selection** - After researcher (choose which story to develop)
+    3. **Angle Selection** - After angle generation (choose emotional lens)
+    4. **Content Approval** - After creation, before execution/publishing
+    5. **Final Approval** - After review (approve or request revision)
+    
+    **On Reject:**
+    - Review rejection loops back to creator step
+    - Creator re-executes with reviewer feedback
+    - Maximum 2 revision cycles before manual intervention
+  </Accordion>
+  
+  <Accordion title="Format System" icon="palette">
+    Platform-specific agents use the **format system:**
+    
+    ```yaml
+    format: instagram-feed
+    ```
+    
+    The Pipeline Runner automatically injects best practices from:
+    ```
+    _opensquad/core/best-practices/instagram-feed.md
+    ```
+    
+    This file contains:
+    - Platform algorithm signals
+    - Optimal content structure
+    - Engagement patterns
+    - Technical specs (image sizes, character limits)
+    
+    Available formats: `instagram-feed`, `instagram-reels`, `linkedin-post`, `linkedin-article`, `twitter-thread`, `youtube-script`, `blog-post`, and more.
+  </Accordion>
+</AccordionGroup>
+
+### Approving or Requesting Changes
+
+**Approve the design:**
+```
+You: yes
+```
+
+**Request changes:**
+```
+You: Can you add a designer agent to create images for the carousels?
+```
+
+The Architect adjusts and re-presents:
+```
+Architect: Updated! I've added:
+
+6. 🎨 Diana Design — Visual Designer
+   Creates carousel images following brand guidelines
+   Tasks: generate-visuals.md
+   Skills: canva (if installed, otherwise manual)
+   
+Updated pipeline:
+[...] → [Iago + Luna create content] → 🛑 Approve Content → 
+[Diana: create visuals] → 🛑 Approve Visuals → [Review] → 🛑 Final Approval
+
+Does this work?
+```
+
+<Tip>
+Common change requests:
+- Add/remove agents
+- Change execution mode (subagent ↔ inline)
+- Add skills or integrations
+- Adjust task granularity
+- Modify checkpoint placement
+</Tip>
+
+## Phase 5: Build
+
+Once you approve, the Architect generates all files:
+
+```
+✓ Generating reference materials...
+  - pipeline/data/research-brief.md
+  - pipeline/data/domain-framework.md
+  - pipeline/data/quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/anti-patterns.md
+  - pipeline/data/tone-of-voice.md
+
+✓ Creating squad.yaml
+✓ Creating squad-party.csv
+
+✓ Creating agent: pedro-pesquisa.agent.md
+✓ Creating agent tasks:
+  - agents/pedro-pesquisa/tasks/find-trends.md
+  - agents/pedro-pesquisa/tasks/rank-topics.md
+
+✓ Creating agent: ivan-ideia.agent.md
+✓ Creating agent tasks:
+  - agents/ivan-ideia/tasks/generate-angles.md
+
+✓ Creating agent: iago-instagram.agent.md
+✓ Creating agent tasks:
+  - agents/iago-instagram/tasks/create-carousel.md
+  - agents/iago-instagram/tasks/optimize-carousel.md
+  - agents/iago-instagram/tasks/polish-hooks.md
+
+✓ Creating agent: luna-linkedin.agent.md
+✓ Creating agent tasks:
+  - agents/luna-linkedin/tasks/create-post.md
+  - agents/luna-linkedin/tasks/optimize-post.md
+
+✓ Creating agent: renata-revisao.agent.md
+✓ Creating agent tasks:
+  - agents/renata-revisao/tasks/score-content.md
+  - agents/renata-revisao/tasks/generate-feedback.md
+
+✓ Creating pipeline steps:
+  - pipeline/steps/step-01-research-focus.md
+  - pipeline/steps/step-02-research.md
+  - pipeline/steps/step-03-select-topic.md
+  - pipeline/steps/step-04-generate-angles.md
+  - pipeline/steps/step-05-select-angle.md
+  - pipeline/steps/step-06-create-content.md
+  - pipeline/steps/step-07-approve-content.md
+  - pipeline/steps/step-08-review.md
+  - pipeline/steps/step-09-final-approval.md
+
+✓ Creating output directory: output/.gitkeep
+✓ Creating memory file: _memory/memories.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✅ Squad created: tech-news-carousel
+📁 Location: squads/tech-news-carousel/
+🤖 Agents: 5
+📋 Pipeline: 9 steps
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ready to run? Type: /opensquad run tech-news-carousel
+```
+
+<Info>
+**All files are generated atomically** — you never get a half-built squad. If generation fails, no files are created.
+</Info>
+
+## Agent Definition Format
+
+Every agent is a complete `.agent.md` file with YAML frontmatter + Markdown body:
+
+```yaml
+---
+id: "squads/tech-news-carousel/agents/iago-instagram"
+name: "Iago Instagram"
+title: "Instagram Carousel Creator"
+icon: "📱"
+squad: "tech-news-carousel"
+execution: subagent
+skills:
+  - web_fetch
+tasks:
+  - tasks/create-carousel.md
+  - tasks/optimize-carousel.md
+  - tasks/polish-hooks.md
+---
+
+# Iago Instagram
+
+## Persona
+
+### Role
+Instagram Carousel Specialist who transforms complex topics into engaging,
+visually-structured carousel posts optimized for Instagram's algorithm and
+audience psychology. Produces posts that maximize saves, shares, and comments.
+
+### Identity
+Detail-oriented creator who obsesses over hook strength, slide flow, and
+visual hierarchy. Understands Instagram's audience craves quick value and
+clear takeaways. Believes the best carousels teach something new in under
+60 seconds.
+
+### Communication Style
+Direct and structured. Uses numbered lists and clear sections. Focuses on
+actionable insights per slide. Explains design decisions with data.
+
+## Principles
+
+1. Hook in first 6 words - if slide 1 doesn't stop the scroll, nothing else matters
+2. One insight per slide - clarity beats density
+3. Visual hierarchy - text must be scannable at thumbnail size
+4. CTA drives conversation - end with question or call to action
+5. Slides follow logical progression - each slide sets up the next
+6. Contrarian angles win - challenge common beliefs, provide new perspective
+
+[... Full persona, operational framework, voice guidance, anti-patterns,
+quality criteria - 120-200 lines total]
+```
+
+### Task File Format
+
+Each task in the agent's `tasks/` directory:
+
+```markdown
+---
+task: "Create Carousel"
+order: 1
+input: |
+  - selected_angle: The chosen emotional angle
+  - story_content: The source story with key facts
+  - tone_of_voice: Selected brand voice
+output: |
+  - carousel_draft: Complete carousel with 7-10 slides
+  - hook_options: 3 alternative hooks for A/B testing
+---
+
+# Create Carousel
+
+Produce a complete Instagram carousel draft following the selected angle
+and brand voice, structured for maximum engagement.
+
+## Process
+
+1. Analyze the source story - extract 5-7 key insights
+2. Structure insights by progression (setup → reveal → payoff)
+3. Write slide 1 hook using proven patterns from investigation data
+4. Develop slides 2-9: one insight per slide, 15-25 words max
+5. Craft slide 10: reinforce value + question CTA
+6. Generate 2 alternative hooks for A/B testing
+
+## Output Format
+
+```yaml
+carousel:
+  slide_1: "Hook text here"
+  slide_2: "Insight 1 text here"
+  ...
+  slide_10: "CTA text here"
+hook_alternatives:
+  - "Alternative hook 1"
+  - "Alternative hook 2"
+```
+
+## Output Example
+
+> Use as quality reference, not rigid template.
+
+[... 20+ lines of realistic example carousel]
+
+## Quality Criteria
+
+- [ ] Hook uses question or bold statement (under 12 words)
+- [ ] Each slide: 15-25 words, single clear point
+- [ ] Slide 10 ends with engagement question
+- [ ] No jargon without explanation
+- [ ] Logical flow: each slide builds on previous
+
+## Veto Conditions
+
+Reject and redo if ANY are true:
+1. Any slide exceeds 30 words
+2. Hook doesn't create curiosity or promise value
+3. CTA is generic ("what do you think?" without context)
+```
+
+<Note>
+**Veto conditions** create an internal quality loop. If any condition triggers, the agent automatically retries before moving to the next step.
+</Note>
+
+## Squad Directory Structure (Final)
+
+After build completes:
+
+```
+squads/tech-news-carousel/
+├── squad.yaml                      # Squad definition
+├── squad-party.csv                 # Agent manifest
+├── agents/                         # Agent definitions
+│   ├── pedro-pesquisa.agent.md
+│   │   └── tasks/
+│   │       ├── find-trends.md
+│   │       └── rank-topics.md
+│   ├── ivan-ideia.agent.md
+│   │   └── tasks/
+│   │       └── generate-angles.md
+│   ├── iago-instagram.agent.md
+│   │   └── tasks/
+│   │       ├── create-carousel.md
+│   │       ├── optimize-carousel.md
+│   │       └── polish-hooks.md
+│   ├── luna-linkedin.agent.md
+│   │   └── tasks/
+│   │       ├── create-post.md
+│   │       └── optimize-post.md
+│   └── renata-revisao.agent.md
+│       └── tasks/
+│           ├── score-content.md
+│           └── generate-feedback.md
+├── pipeline/
+│   ├── pipeline.yaml               # Pipeline entry point
+│   ├── steps/                      # Pipeline steps
+│   │   ├── step-01-research-focus.md
+│   │   ├── step-02-research.md
+│   │   ├── step-03-select-topic.md
+│   │   ├── step-04-generate-angles.md
+│   │   ├── step-05-select-angle.md
+│   │   ├── step-06-create-content.md
+│   │   ├── step-07-approve-content.md
+│   │   ├── step-08-review.md
+│   │   └── step-09-final-approval.md
+│   └── data/                       # Reference materials
+│       ├── research-brief.md       # Domain research findings
+│       ├── domain-framework.md     # Operational methodology
+│       ├── quality-criteria.md     # Scoring thresholds
+│       ├── output-examples.md      # Real examples
+│       ├── anti-patterns.md        # Common mistakes
+│       └── tone-of-voice.md        # Voice guidelines
+├── _memory/
+│   └── memories.md                 # Squad-specific memory (empty)
+├── _investigations/                # (If Sherlock ran)
+│   ├── example-creator/
+│   │   ├── raw-content.md
+│   │   └── pattern-analysis.md
+│   └── consolidated-analysis.md
+└── output/
+    └── .gitkeep                    # Output directory (empty until first run)
+```
+
+## Next Steps
+
+Your squad is ready! Now you can:
+
+<CardGroup cols={2}>
+  <Card title="Run Your Squad" icon="play" href="/squads/running">
+    Execute the pipeline and see your agents in action
+  </Card>
+  
+  <Card title="Edit Squad" icon="pen-to-square" href="/squads/editing">
+    Modify agents, tasks, or pipeline after creation
+  </Card>
+  
+  <Card title="Squad Examples" icon="book-open" href="/squads/examples">
+    Explore real-world squad configurations
+  </Card>
+  
+  <Card title="Agent Deep Dive" icon="robot" href="/concepts/agents">
+    Understand agent structure and capabilities
+  </Card>
+</CardGroup>
+
+## Advanced Creation Options
+
+<AccordionGroup>
+  <Accordion title="Creating Data Analysis Squads">
+    For data/analytics squads, discovery questions change:
+    
+    1. **Purpose**: "Analyze CSV files and generate insights"
+    2. **Data Source**: "Upload your CSV" (squad reads from file)
+    3. **Analysis Type**: Statistical, trend analysis, comparison
+    4. **Output Format**: Report, presentation, dashboard
+    
+    **Key differences:**
+    - No format selection (not content creation)
+    - Researcher becomes Data Analyst
+    - No Sherlock investigation (no profiles to analyze)
+    - Reference materials focus on analytics frameworks
+  </Accordion>
+  
+  <Accordion title="Creating Automation Squads">
+    For automation squads:
+    
+    1. **Purpose**: "Monitor news and send daily digests"
+    2. **Trigger**: Schedule (cron) vs manual vs webhook
+    3. **Actions**: APIs to call, scripts to run
+    4. **Notifications**: Email, Slack, SMS
+    
+    **Key differences:**
+    - Agents: Monitor → Execute → Notify
+    - Skills: API integrations, notification services
+    - Pipeline runs on schedule (not user-initiated)
+  </Accordion>
+  
+  <Accordion title="Multi-Squad Workflows">
+    Chain squads together:
+    
+    ```
+    Squad A (Research) → outputs findings
+    ↓
+    Squad B (Content) → reads findings, produces content
+    ↓
+    Squad C (Distribution) → reads content, publishes
+    ```
+    
+    Each squad's `output/` becomes the next squad's input.
+    
+    Use `/opensquad run squad-a && /opensquad run squad-b && /opensquad run squad-c`
+    for sequential execution.
+  </Accordion>
+</AccordionGroup>

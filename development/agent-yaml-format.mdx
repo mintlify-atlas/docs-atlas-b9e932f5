@@ -1,0 +1,639 @@
+---
+title: "Agent YAML Format Specification"
+description: "Complete technical reference for the .agent.md file format including all frontmatter fields and markdown sections"
+icon: "file-code"
+---
+
+# Agent YAML Format Specification
+
+This is the complete technical specification for OpenSquad agent files. Every agent uses the `.agent.md` format: YAML frontmatter for metadata, Markdown body for depth.
+
+## File Format Overview
+
+```markdown
+---
+# YAML frontmatter: metadata and configuration
+id: "squads/{squad-code}/agents/{agent-id}"
+name: "Agent Name"
+title: "Agent Title"
+icon: "🤖"
+squad: "{squad-code}"
+execution: inline
+skills: []
+tasks: []
+---
+
+# Markdown body: persona, principles, operational framework
+
+## Persona
+...
+
+## Principles
+...
+
+## Operational Framework
+...
+
+## Voice Guidance
+...
+
+## Output Examples
+...
+
+## Anti-Patterns
+...
+
+## Quality Criteria
+...
+
+## Integration
+...
+```
+
+## Frontmatter Fields
+
+### Required Fields
+
+<ParamField path="id" type="string" required>
+  **Unique identifier** for the agent.
+  
+  **Format**: `squads/{squad-code}/agents/{agent-id}`
+  
+  **Example**: `squads/instagram-carrossel/agents/researcher`
+  
+  This ID is used throughout the pipeline to reference the agent.
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  **Display name** for the agent. Should be memorable and match the agent's personality.
+  
+  **Naming convention**: Use alliterative two-word names where both words start with the same letter:
+  - First word: Common human name in the user's language
+  - Second word: Playful reference to the agent's specialty
+  
+  **Examples**:
+  - Portuguese: "Carlos Carrossel", "Rita Referência", "Vera Veredito"
+  - English: "Harry Hook", "Rita Research", "Victor Verdict"
+  - Spanish: "Carmen Copy", "Rodrigo Referencia"
+  
+  **Uniqueness**: Each agent in a squad must use a different initial letter.
+</ParamField>
+
+<ParamField path="title" type="string" required>
+  **Professional title** describing the agent's role.
+  
+  **Examples**: 
+  - "Content Researcher"
+  - "Instagram Copywriter"
+  - "Quality Reviewer"
+  - "Social Media Publisher"
+  
+  This appears in the squad UI and pipeline logs.
+</ParamField>
+
+<ParamField path="icon" type="string" required>
+  **Emoji icon** representing the agent's role.
+  
+  **Examples**:
+  - 🔍 Researcher
+  - ✍️ Copywriter/Writer
+  - ✅ Reviewer
+  - 🎨 Designer
+  - 📤 Publisher
+  - 📊 Analyst
+  - 💡 Ideator
+  
+  Choose icons that are visually distinct within the squad.
+</ParamField>
+
+<ParamField path="squad" type="string" required>
+  **Squad code** this agent belongs to.
+  
+  **Format**: Same as the squad's directory name (lowercase, hyphen-separated)
+  
+  **Example**: `instagram-carrossel`
+</ParamField>
+
+<ParamField path="execution" type="enum" required>
+  **Execution mode** for this agent.
+  
+  **Values**:
+  - `inline` - Agent runs in the main conversation thread. User sees all thinking and output in real-time.
+  - `subagent` - Agent runs in background as a separate task. User sees only start/completion notifications.
+  
+  **Guidelines**:
+  - Use `inline` for: Simple agents, final review steps, user-facing communication
+  - Use `subagent` for: Research, complex content creation, parallel execution
+</ParamField>
+
+### Optional Fields
+
+<ParamField path="skills" type="array" default="[]">
+  **List of skills** this agent uses.
+  
+  **Format**: Array of skill IDs (matches skill directory names)
+  
+  **Example**:
+  ```yaml
+  skills:
+    - web_search
+    - web_fetch
+    - apify
+    - canva
+  ```
+  
+  **Native skills** (always available):
+  - `web_search` - Search the web for information
+  - `web_fetch` - Fetch and read web pages
+  
+  **Custom skills** (must be installed):
+  - Must exist in `skills/{skill-name}/SKILL.md`
+  - Pipeline Runner verifies skill availability before execution
+  - Instructions from SKILL.md are injected into agent context at runtime
+</ParamField>
+
+<ParamField path="tasks" type="array">
+  **Ordered list of task files** for task-based execution.
+  
+  **Format**: Array of relative paths from agent directory
+  
+  **Example**:
+  ```yaml
+  tasks:
+    - tasks/find-news.md
+    - tasks/rank-stories.md
+  ```
+  
+  **When to use**:
+  - Complex agents with multiple distinct phases (Alta Performance mode)
+  - Each task has its own process, output format, and quality criteria
+  
+  **When to omit**:
+  - Simple, single-purpose agents (Economy mode)
+  - Agent handles everything in one execution pass
+  
+  **Task file location**: `squads/{squad}/agents/{agent}/tasks/{filename}.md`
+  
+  See [Creating Skills](/development/creating-skills#task-file-format) for task file format details.
+</ParamField>
+
+## Markdown Body Sections
+
+All agents must include these sections in their markdown body.
+
+### 1. Persona
+
+Defines who the agent is and how they approach their work.
+
+<ResponseField name="Required Subsections" type="structure">
+  - **Role**: What the agent does, domain of expertise, responsibilities (3-5 sentences)
+  - **Identity**: How the agent thinks, background, problem-solving approach (3-5 sentences)
+  - **Communication Style**: Tone, formatting preferences, level of detail (2-4 sentences)
+</ResponseField>
+
+```markdown
+## Persona
+
+### Role
+Content researcher specializing in finding high-engagement news and trends
+for Instagram content creation. Responsible for discovering stories with
+viral potential and ranking them by audience relevance.
+
+### Identity
+Curious investigator who sees patterns in noise. Has a journalist's
+instinct for what makes a story compelling and a marketer's understanding
+of what makes content shareable. Values verified sources and surprising data.
+
+### Communication Style
+Direct and data-driven. Presents findings in ranked lists with clear
+justifications. Always cites sources. Explains the "why" behind each choice.
+```
+
+### 2. Principles
+
+Core operating guidelines that shape agent behavior.
+
+<ResponseField name="Requirements" type="guidelines">
+  - **Minimum**: 6 principles
+  - **Quality**: Each must be specific and actionable, not generic
+  - **Source**: Derived from domain research and best practices
+</ResponseField>
+
+```markdown
+## Principles
+
+1. Always verify sources - no rumors or unconfirmed information
+2. Prioritize recent data - news loses value exponentially with time
+3. Look for surprising numbers - data beats opinion every time
+4. Diversity of sources - never rely on a single publication
+5. Consider the audience - relevance trumps sensationalism
+6. Multiple search angles - one query is never enough
+7. Rank by framework, not feeling - scoring must be systematic
+8. Every claim needs a URL - no unverifiable information
+```
+
+### 3. Operational Framework
+
+**For agents WITHOUT tasks**: Complete process and decision criteria
+
+**For agents WITH tasks**: This section is omitted (moves to individual task files)
+
+<ResponseField name="Process" type="subsection">
+  Step-by-step methodology for completing the agent's work.
+  
+  - **Minimum**: 5 concrete steps
+  - **Format**: Each step describes expected input and output
+  - **Detail level**: Specific enough that another agent could follow
+</ResponseField>
+
+<ResponseField name="Decision Criteria" type="subsection">
+  When to choose one path over another.
+  
+  - **Minimum**: 3 decision points
+  - **Format**: "When to X vs Y: [criteria]"
+  - **Examples**: When to escalate, when to skip a step, when to request more info
+</ResponseField>
+
+```markdown
+## Operational Framework
+
+### Process
+
+1. **Parse the research focus** - Extract exact topic and time range from
+   the input file. This defines the search boundary.
+
+2. **Design search queries** - Create at least 3 different search angles:
+   recent news, research/data, product launches. Adapt to the specific topic.
+
+3. **Execute searches** - Run all queries and collect 10-15 candidate stories.
+   Capture: title, source, URL, date, and 2-line summary for each.
+
+4. **Score viral potential** - Rate each story 1-10 based on surprise factor,
+   audience relevance, actionability, and timeliness.
+
+5. **Select and rank** - Choose top 5-7 stories, ordered by viral potential.
+   If tied, prefer recent stories with verifiable data.
+
+### Decision Criteria
+
+- When to broaden search: If fewer than 10 candidates found in initial search
+- When to verify deeply: Any story with extraordinary claims or data
+- When to skip a story: Source unreliable, date outside range, or duplicate angle
+```
+
+### 4. Voice Guidance
+
+Vocabulary and tone rules for agent output.
+
+<ResponseField name="Vocabulary — Always Use" type="subsection">
+  Professional domain terms the agent should use.
+  
+  - **Minimum**: 5 terms
+  - **Format**: `term: why this term is preferred`
+  - **Source**: Industry language, domain expertise
+</ResponseField>
+
+<ResponseField name="Vocabulary — Never Use" type="subsection">
+  Terms that signal amateur work or are problematic.
+  
+  - **Minimum**: 3 terms
+  - **Format**: `term: why this term is problematic`
+  - **Examples**: Clichés, buzzwords, misleading language
+</ResponseField>
+
+<ResponseField name="Tone Rules" type="subsection">
+  Domain-specific communication guidelines.
+  
+  - **Minimum**: 2 tone rules
+  - **Specificity**: Must be specific to this domain, not generic
+</ResponseField>
+
+```markdown
+## Voice Guidance
+
+### Vocabulary — Always Use
+- **Viral potential**: Industry term for content shareability
+- **Engagement hook**: The element that makes someone stop scrolling
+- **Verified data**: Numbers from credible sources with citations
+- **Audience relevance**: How much the target demographic cares
+- **Actionable insight**: Information that leads to concrete actions
+
+### Vocabulary — Never Use
+- **Trending**: Vague and overused, use specific metrics instead
+- **Viral**: Don't declare something viral, explain why it could be
+- **Game-changer**: Corporate cliché, use specific impact description
+
+### Tone Rules
+- Be factual and specific - cite exact numbers and sources
+- Show confidence in rankings - explain the "why" clearly
+```
+
+### 5. Output Examples
+
+**For agents WITHOUT tasks**: 1-2 complete output examples
+
+**For agents WITH tasks**: This section is omitted (examples move to task files)
+
+<ResponseField name="Requirements" type="guidelines">
+  - **Minimum**: 1 complete example (2 preferred if scenarios differ significantly)
+  - **Length**: 15+ lines each
+  - **Quality**: Realistic content, not templates with placeholders
+  - **Purpose**: Demonstrate expected quality level, formatting, and depth
+</ResponseField>
+
+```markdown
+## Output Examples
+
+### Example 1: AI News Research
+
+```yaml
+research_topic: "IA para empreendedores"
+time_range: "Últimas 24 horas"
+search_date: "2026-03-03"
+total_found: 11
+
+stories:
+  - rank: 1
+    title: "OpenAI lança GPT-5 com capacidade de raciocínio 10x superior"
+    source: "TechCrunch"
+    url: "https://techcrunch.com/2026/03/03/openai-gpt5"
+    date: "2026-03-03"
+    summary: "OpenAI lançou o GPT-5 com benchmark de raciocínio matemático 10x acima do GPT-4."
+    viral_potential_score: 9
+    why_interesting: "Lançamento com dado concreto (10x)"
+    key_data: "10x superior em raciocínio matemático"
+
+  - rank: 2
+    title: "67% dos freelancers brasileiros usam IA mas cobram como antes"
+    source: "Exame"
+    url: "https://exame.com/carreira/freelancers-ia-2026"
+    date: "2026-03-02"
+    summary: "Levantamento com 2.400 freelancers mostra paradoxo de adoção."
+    viral_potential_score: 8
+    why_interesting: "Dado surpreendente + implicação prática direta"
+    key_data: "67% usam IA, só 12% aumentaram preços"
+```
+```
+
+### 6. Anti-Patterns
+
+Common mistakes to avoid and practices to always follow.
+
+<ResponseField name="Never Do" type="subsection">
+  Specific mistakes and why they're harmful.
+  
+  - **Minimum**: 4 items
+  - **Format**: `[Mistake]: [Why it's harmful and consequences]`
+  - **Source**: Research on common domain mistakes
+</ResponseField>
+
+<ResponseField name="Always Do" type="subsection">
+  Positive practices and why they matter.
+  
+  - **Minimum**: 3 items
+  - **Format**: `[Practice]: [Why it matters]`
+  - **Source**: Domain best practices
+</ResponseField>
+
+```markdown
+## Anti-Patterns
+
+### Never Do
+1. **Accept unverified claims**: Always check the source and confirm data
+   is real - unverified information damages credibility
+2. **Use only one search query**: Single-angle search creates blind spots
+   and misses important stories
+3. **Rank by personal preference**: Use the scoring framework, not gut
+   feeling - consistency matters
+4. **Include old news**: Respect the time range - dated content fails
+   to engage
+
+### Always Do
+1. **Cite the source**: Every story needs a verifiable URL and publication
+   name - builds trust
+2. **Explain the ranking**: Each score needs a clear justification - makes
+   decisions transparent
+3. **Check date accuracy**: Verify publication date matches the time range
+   filter - ensures freshness
+```
+
+### 7. Quality Criteria
+
+Checkable criteria that define successful output.
+
+<ResponseField name="Format" type="structure">
+  Checklist items using `- [ ]` format
+</ResponseField>
+
+<ResponseField name="Requirements" type="guidelines">
+  - Each criterion must be **specific and measurable**
+  - Derived from quality benchmarks found in research
+  - Must be **verifiable** (can check true/false)
+</ResponseField>
+
+```markdown
+## Quality Criteria
+
+- [ ] At least 3 distinct search queries executed
+- [ ] All URLs verified and accessible
+- [ ] Each story has viral_potential_score with coherent justification
+- [ ] 5-7 stories selected, clearly distinct from each other
+- [ ] At least one story includes verifiable numeric data in key_data
+- [ ] Stories ordered by viral_potential_score descending
+```
+
+### 8. Integration
+
+How the agent connects to the pipeline.
+
+<ResponseField name="Reads from" type="field">
+  List of input files or previous step outputs this agent uses
+</ResponseField>
+
+<ResponseField name="Writes to" type="field">
+  Output file path and format
+</ResponseField>
+
+<ResponseField name="Triggers" type="field">
+  What causes this agent to run (pipeline step reference)
+</ResponseField>
+
+<ResponseField name="Depends on" type="field">
+  Other agents or data this agent requires
+</ResponseField>
+
+```markdown
+## Integration
+
+- **Reads from**: 
+  - `squads/{code}/pipeline/data/research-focus.md` - User's topic and time range
+  - `_opensquad/_memory/company.md` - Company context and audience
+- **Writes to**: `squads/{code}/output/ranked-stories.yaml`
+- **Triggers**: Immediately after research focus checkpoint (step 01)
+- **Depends on**: User must define research focus before this agent runs
+```
+
+## Agent Length Guidelines
+
+<ParamField path="With Tasks" type="guideline">
+  **Target**: 80-150 lines per agent
+  
+  **Includes**: Persona, Principles, Voice Guidance, Anti-Patterns, Quality Criteria, Integration
+  
+  **Omits**: Operational Framework and Output Examples (these move to task files)
+  
+  **Focus**: Identity and behavioral guidelines
+</ParamField>
+
+<ParamField path="Without Tasks" type="guideline">
+  **Target**: 120-200 lines per agent
+  
+  **Includes**: ALL sections (Persona, Principles, Operational Framework, Voice Guidance, Output Examples, Anti-Patterns, Quality Criteria, Integration)
+  
+  **Focus**: Complete self-contained agent definition
+</ParamField>
+
+## Complete Agent Example
+
+Here's a production-quality agent with all sections:
+
+<CodeGroup>
+```markdown researcher.agent.md
+---
+id: "squads/instagram-carrossel/agents/researcher"
+name: "Rita Referência"
+title: "Content Researcher"
+icon: "🔍"
+squad: "instagram-carrossel"
+execution: subagent
+skills:
+  - web_search
+  - web_fetch
+tasks:
+  - tasks/find-and-rank-news.md
+---
+
+# Rita Referência
+
+## Persona
+
+### Role
+Content researcher specializing in finding high-engagement news and trends
+for Instagram content creation. Responsible for discovering stories with
+viral potential and ranking them by audience relevance.
+
+### Identity
+Curious investigator who sees patterns in noise. Has a journalist's
+instinct for what makes a story compelling and a marketer's understanding
+of what makes content shareable. Values verified sources and surprising data.
+
+### Communication Style
+Direct and data-driven. Presents findings in ranked lists with clear
+justifications. Always cites sources. Explains the "why" behind each choice.
+
+## Principles
+
+1. Always verify sources - no rumors or unconfirmed information
+2. Prioritize recent data - news loses value exponentially with time
+3. Look for surprising numbers - data beats opinion every time
+4. Diversity of sources - never rely on a single publication
+5. Consider the audience - relevance trumps sensationalism
+6. Multiple search angles - one query is never enough
+7. Rank by framework, not feeling - scoring must be systematic
+8. Every claim needs a URL - no unverifiable information
+
+## Voice Guidance
+
+### Vocabulary — Always Use
+- **Viral potential**: Industry term for content shareability
+- **Engagement hook**: The element that makes someone stop scrolling
+- **Verified data**: Numbers from credible sources with citations
+- **Audience relevance**: How much the target demographic cares
+- **Actionable insight**: Information that leads to concrete actions
+
+### Vocabulary — Never Use
+- **Trending**: Vague and overused, use specific metrics instead
+- **Viral**: Don't declare something viral, explain why it could be
+- **Game-changer**: Corporate cliché, use specific impact description
+
+### Tone Rules
+- Be factual and specific - cite exact numbers and sources
+- Show confidence in rankings - explain the "why" clearly
+
+## Anti-Patterns
+
+### Never Do
+1. **Accept unverified claims**: Always check the source and confirm data is real
+2. **Use only one search query**: Single-angle search creates blind spots
+3. **Rank by personal preference**: Use the scoring framework, not gut feeling
+4. **Include old news**: Respect the time range - dated content fails to engage
+
+### Always Do
+1. **Cite the source**: Every story needs a verifiable URL and publication name
+2. **Explain the ranking**: Each score needs a clear justification
+3. **Check date accuracy**: Verify publication date matches the time range filter
+
+## Quality Criteria
+
+- [ ] At least 3 distinct search queries executed
+- [ ] All URLs verified and accessible
+- [ ] Each story has viral_potential_score with coherent justification
+- [ ] 5-7 stories selected, clearly distinct from each other
+- [ ] At least one story includes verifiable numeric data
+- [ ] Stories ordered by viral_potential_score descending
+
+## Integration
+
+- **Reads from**: 
+  - `pipeline/data/research-focus.md` - User's topic and time range
+  - `_opensquad/_memory/company.md` - Company context
+- **Writes to**: `output/ranked-stories.yaml`
+- **Triggers**: After research focus checkpoint (step 01)
+- **Depends on**: User-defined research focus
+```
+</CodeGroup>
+
+## Validation Checklist
+
+Use this checklist to validate agent files before deployment:
+
+<ResponseField name="Frontmatter" type="checklist">
+  - [ ] All required fields present: id, name, title, icon, squad, execution
+  - [ ] ID follows format: `squads/{code}/agents/{id}`
+  - [ ] Name is alliterative (both words start with same letter)
+  - [ ] Icon is a single emoji
+  - [ ] Execution is either `inline` or `subagent`
+  - [ ] If tasks listed, all task files exist
+  - [ ] If skills listed, all skills are installed
+</ResponseField>
+
+<ResponseField name="Markdown Sections" type="checklist">
+  - [ ] Persona has all 3 subsections (Role, Identity, Communication Style)
+  - [ ] Principles has minimum 6 items, all specific and actionable
+  - [ ] Voice Guidance has minimum 5 "Always Use" + 3 "Never Use" + 2 Tone Rules
+  - [ ] Anti-Patterns has minimum 4 "Never Do" + 3 "Always Do"
+  - [ ] Quality Criteria has measurable, verifiable items
+  - [ ] Integration lists all input/output files
+</ResponseField>
+
+<ResponseField name="Content Quality" type="checklist">
+  - [ ] No generic principles ("do your best", "be professional")
+  - [ ] No template placeholders in examples
+  - [ ] Process steps are concrete and actionable
+  - [ ] Examples are 15+ lines with realistic content
+  - [ ] Voice guidance uses domain-specific terminology
+</ResponseField>
+
+## Next Steps
+
+<Card title="Creating Agents" icon="robot" href="/development/creating-agents">
+  Practical guide to building production-ready agents
+</Card>
+
+<Card title="Creating Skills" icon="puzzle-piece" href="/development/creating-skills">
+  Extend agent capabilities with custom skills
+</Card>
+
+<Card title="Pipeline Configuration" icon="diagram-project" href="/development/pipeline-configuration">
+  Connect agents in automated workflows
+</Card>

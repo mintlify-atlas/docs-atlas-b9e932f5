@@ -1,0 +1,705 @@
+---
+title: "Pipeline Configuration"
+description: "Configure multi-step workflows that orchestrate agents, checkpoints, and handoffs into automated squad pipelines"
+icon: "diagram-project"
+---
+
+# Pipeline Configuration
+
+Pipelines orchestrate agents into automated workflows. Each pipeline is defined by a `pipeline.yaml` file and a collection of step files that specify execution order, checkpoints, and handoffs.
+
+## Pipeline Structure
+
+Every squad has a pipeline in its `pipeline/` directory:
+
+```
+squads/{squad-name}/
+  pipeline/
+    pipeline.yaml        # Pipeline definition
+    steps/               # Step files
+      step-01-*.md
+      step-02-*.md
+      ...
+    data/                # Reference materials
+      research-brief.md
+      quality-criteria.md
+      ...
+```
+
+## pipeline.yaml Format
+
+The main pipeline definition file:
+
+```yaml
+name: "Pipeline Name"
+version: "1.0.0"
+created: "2026-03-03"
+squad: "squad-code"
+
+description: >
+  What this pipeline does end-to-end. Describe the complete
+  workflow from input to final output.
+
+mode: "alta-performance" # or "economico"
+
+steps:
+  - id: step-01
+    name: "Step Name"
+    type: checkpoint # or agent
+    file: steps/step-01-input.md
+
+  - id: step-02
+    name: "Research"
+    type: agent
+    agent: researcher
+    tasks:
+      - find-and-rank-news
+    file: steps/step-02-research.md
+    depends_on: step-01
+
+  - id: step-03
+    name: "Select Story"
+    type: checkpoint
+    file: steps/step-03-select.md
+    depends_on: step-02
+
+checkpoints:
+  - step-01
+  - step-03
+  - step-05
+
+output:
+  artifacts:
+    - output/ranked-stories.yaml
+    - output/final-content.md
+```
+
+### Pipeline Metadata
+
+<ParamField path="name" type="string" required>
+  Human-readable pipeline name
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  Semantic version (e.g., `"1.0.0"`)
+</ParamField>
+
+<ParamField path="created" type="string" required>
+  Creation date in `YYYY-MM-DD` format
+</ParamField>
+
+<ParamField path="squad" type="string" required>
+  Squad code (matches squad directory name)
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Complete workflow description. Use YAML folded scalar (`>`) for multi-line.
+</ParamField>
+
+<ParamField path="mode" type="enum" required>
+  Performance mode:
+  - `alta-performance` - Full pipeline with deep analysis, multiple formats, dedicated optimization
+  - `economico` - Streamlined pipeline with basic analysis, main format only, lightweight review
+</ParamField>
+
+### Step Definitions
+
+<ParamField path="steps" type="array" required>
+  Ordered list of pipeline steps
+</ParamField>
+
+Each step has:
+
+<ParamField path="steps[].id" type="string" required>
+  Unique step identifier (e.g., `step-01`, `step-02`)
+</ParamField>
+
+<ParamField path="steps[].name" type="string" required>
+  Display name for the step
+</ParamField>
+
+<ParamField path="steps[].type" type="enum" required>
+  Step type:
+  - `checkpoint` - Pauses for user input/approval
+  - `agent` - Executes an agent
+</ParamField>
+
+<ParamField path="steps[].file" type="string" required>
+  Path to step file (relative to pipeline directory)
+</ParamField>
+
+<ParamField path="steps[].agent" type="string">
+  Agent ID (required for `type: agent`). Must match an agent's `id` in frontmatter.
+</ParamField>
+
+<ParamField path="steps[].tasks" type="array">
+  List of task names to execute (optional, only for agents with tasks)
+</ParamField>
+
+<ParamField path="steps[].depends_on" type="string">
+  Step ID that must complete before this step runs
+</ParamField>
+
+<ParamField path="steps[].optional" type="boolean" default="false">
+  If `true`, user can skip this step during execution
+</ParamField>
+
+### Checkpoint and Output Lists
+
+<ParamField path="checkpoints" type="array">
+  List of step IDs where pipeline pauses for user interaction
+</ParamField>
+
+<ParamField path="output.artifacts" type="array">
+  List of files produced by the pipeline (for documentation)
+</ParamField>
+
+## Step File Format
+
+Each step is defined in its own markdown file with YAML frontmatter.
+
+### Agent Step Format
+
+```yaml
+---
+execution: subagent    # or inline
+agent: researcher      # agent ID
+format: instagram-feed # optional - platform format
+inputFile: squads/{code}/pipeline/data/research-focus.md
+outputFile: squads/{code}/output/ranked-stories.yaml
+model_tier: powerful   # optional - fast or powerful
+---
+
+# Step 02: Research and Rank News
+
+## Context Loading
+
+Load these files before executing:
+- `pipeline/data/research-focus.md` - User's topic and time range
+- `_opensquad/_memory/company.md` - Company context
+
+## Instructions
+
+### Process
+
+1. Read the research focus to understand exact topic and time range
+2. Design at least 3 search queries with different angles
+3. Execute searches and collect 10-15 candidate stories
+4. Score each story for viral potential (1-10 scale)
+5. Select top 5-7 stories and rank by score
+
+## Output Format
+
+```yaml
+research_topic: "..."
+time_range: "..."
+stories:
+  - rank: 1
+    title: "..."
+    source: "..."
+```
+
+## Output Example
+
+[Complete realistic example showing expected output quality]
+
+## Veto Conditions
+
+Reject and redo if ANY are true:
+1. Fewer than 5 stories found
+2. All stories from same source
+3. Any URL inaccessible
+
+## Quality Criteria
+
+- [ ] At least 3 search queries executed
+- [ ] All URLs verified
+- [ ] Stories ranked by viral potential score
+```
+
+### Agent Step Frontmatter
+
+<ParamField path="execution" type="enum" required>
+  Execution mode:
+  - `subagent` - Runs in background via Task tool
+  - `inline` - Runs in main conversation
+</ParamField>
+
+<ParamField path="agent" type="string" required>
+  Agent ID (matches agent's frontmatter `id` field)
+</ParamField>
+
+<ParamField path="format" type="string">
+  Platform format ID (e.g., `instagram-feed`, `twitter-thread`). Pipeline Runner auto-injects best practices from `_opensquad/core/best-practices/{format}.md`.
+  
+  **When to use**: Content creation steps that need platform-specific guidelines
+  
+  **When to omit**: Research, analysis, review steps without platform context
+</ParamField>
+
+<ParamField path="inputFile" type="string">
+  Path to input file from previous step. Can use relative paths from squad root.
+</ParamField>
+
+<ParamField path="outputFile" type="string" required>
+  Path where agent writes output. **MUST** start with `squads/{code}/output/` for agent steps.
+  
+  <Note>
+  **PATH RULE**: Agent step outputs always go to `squads/{code}/output/`. Never use `pipeline/data/` for agent outputs - that directory is for reference materials created at squad build time.
+  
+  **Exception**: Checkpoint steps that collect user input can write to `pipeline/data/`.
+  </Note>
+</ParamField>
+
+<ParamField path="model_tier" type="enum">
+  Model tier for subagent execution (only applies to `execution: subagent`):
+  - `fast` - Lightweight model for data extraction, investigation
+  - `powerful` - Default model for writing, analysis, review, strategy
+  
+  **When to use `fast`**: Investigator agents, data extraction, Sherlock subagents
+  
+  **When to use `powerful`**: Writer, creator, reviewer, researcher, strategist agents
+  
+  **When to omit**: For `execution: inline` steps (not applicable)
+</ParamField>
+
+### Agent Step Sections
+
+<ResponseField name="Context Loading" type="section" required>
+  Explicit list of files the agent needs to read before execution.
+  
+  Example files to load:
+  - `pipeline/data/research-focus.md` - User's topic and time range
+  - `_opensquad/_memory/company.md` - Company context
+  - `pipeline/data/quality-criteria.md` - Scoring framework
+</ResponseField>
+
+<ResponseField name="Instructions" type="section" required>
+  Detailed execution instructions.
+  
+  **Subsections**:
+  - **Process**: Minimum 3 concrete steps with specific actions
+  - Additional subsections as needed for complex steps
+</ResponseField>
+
+<ResponseField name="Output Format" type="section" required>
+  Template showing exact structure of expected output.
+  
+  ```markdown
+  ## Output Format
+  
+  ```yaml
+  field: "value"
+  nested:
+    subfield: "value"
+  ```
+  ```
+</ResponseField>
+
+<ResponseField name="Output Example" type="section" required>
+  Complete, realistic example (20+ lines) showing expected quality.
+  
+  <Note>
+  Must be fully realized output with realistic content, not a template with placeholders.
+  </Note>
+</ResponseField>
+
+<ResponseField name="Veto Conditions" type="section">
+  Hard blockers - if any condition is true, the step fails and must retry.
+  
+  Minimum 2 conditions. Example conditions:
+  1. Fewer than 5 stories found - refactor search queries
+  2. All stories from same source - diversify sources
+  3. Any URL returns 404 - replace with verified story
+</ResponseField>
+
+<ResponseField name="Quality Criteria" type="section">
+  Soft criteria - output should meet most but doesn't auto-fail.
+  
+  Example criteria:
+  - At least 3 distinct search queries executed
+  - All URLs verified and accessible
+  - Stories ranked by viral potential score
+</ResponseField>
+
+### Checkpoint Step Format
+
+```yaml
+---
+type: checkpoint
+outputFile: squads/{code}/pipeline/data/research-focus.md # optional
+---
+
+# Step 01: Research Focus Input
+
+This squad creates Instagram carousels from news stories about AI and technology.
+
+**Today's focus**: What topic should we research?
+
+Examples:
+- "OpenAI GPT-5 launch"
+- "AI trends in Brazil"
+- "No-code automation tools"
+
+Type your topic:
+
+---
+
+**Time range**: How recent should the news be?
+
+1. Last 24 hours
+2. Last 7 days
+3. Last month
+4. No time restriction (evergreen)
+
+Reply with a number:
+```
+
+<ParamField path="type" type="literal" required>
+  Must be `checkpoint` for checkpoint steps
+</ParamField>
+
+<ParamField path="outputFile" type="string">
+  Optional. If present, Pipeline Runner writes user's response to this file before proceeding.
+  
+  **Format** (for research focus checkpoints):
+  ```markdown
+  # Research Focus
+  
+  **Topic:** {user's typed topic}
+  **Time Range:** {selected time range label}
+  **Date:** {YYYY-MM-DD}
+  ```
+  
+  This file becomes the `inputFile` for the next agent step.
+</ParamField>
+
+## Common Pipeline Patterns
+
+### Content Creation Pipeline (News-Based)
+
+```yaml
+steps:
+  - id: step-01
+    name: "Research Focus"
+    type: checkpoint
+    file: steps/step-01-input.md
+
+  - id: step-02
+    name: "Find News"
+    type: agent
+    agent: researcher
+    file: steps/step-02-research.md
+    depends_on: step-01
+
+  - id: step-03
+    name: "Select Story"
+    type: checkpoint
+    file: steps/step-03-select-story.md
+    depends_on: step-02
+
+  - id: step-04
+    name: "Generate Angles"
+    type: agent
+    agent: copywriter
+    tasks: [generate-angles]
+    file: steps/step-04-angles.md
+    depends_on: step-03
+
+  - id: step-05
+    name: "Select Angle"
+    type: checkpoint
+    file: steps/step-05-select-angle.md
+    depends_on: step-04
+
+  - id: step-06
+    name: "Create Content"
+    type: agent
+    agent: copywriter
+    tasks: [create-slides, optimize-copy]
+    format: instagram-feed
+    file: steps/step-06-create.md
+    depends_on: step-05
+
+  - id: step-07
+    name: "Approve Content"
+    type: checkpoint
+    file: steps/step-07-approve.md
+    depends_on: step-06
+
+  - id: step-08
+    name: "Review Quality"
+    type: agent
+    agent: reviewer
+    file: steps/step-08-review.md
+    depends_on: step-07
+
+  - id: step-09
+    name: "Final Approval"
+    type: checkpoint
+    file: steps/step-09-final.md
+    depends_on: step-08
+```
+
+**Key characteristics**:
+- Research focus checkpoint (mandatory for all squads with researcher)
+- News selection checkpoint (when fetching multiple stories)
+- Angle generation + selection (for news-based content)
+- Content approval checkpoint (mandatory before execution/publishing steps)
+- Review + final approval
+
+### Content Creation Pipeline (Fixed Source)
+
+```yaml
+steps:
+  - id: step-01
+    name: "Topic Input"
+    type: checkpoint
+
+  - id: step-02
+    name: "Generate Angles"
+    type: agent
+    agent: ideator
+
+  - id: step-03
+    name: "Select Angle"
+    type: checkpoint
+
+  - id: step-04
+    name: "Create Content"
+    type: agent
+    agent: copywriter
+    format: instagram-feed
+
+  - id: step-05
+    name: "Approve Content"
+    type: checkpoint
+
+  - id: step-06
+    name: "Review"
+    type: agent
+    agent: reviewer
+
+  - id: step-07
+    name: "Final Approval"
+    type: checkpoint
+```
+
+**Key characteristics**:
+- No research step (source is fixed/known)
+- Starts with angle generation
+- Content approval checkpoint before any execution steps
+
+### Data Analysis Pipeline
+
+```yaml
+steps:
+  - id: step-01
+    name: "Upload Data"
+    type: checkpoint
+
+  - id: step-02
+    name: "Analyze Data"
+    type: agent
+    agent: analyst
+    tasks: [clean-data, run-analysis, generate-insights]
+
+  - id: step-03
+    name: "Review Insights"
+    type: checkpoint
+
+  - id: step-04
+    name: "Create Report"
+    type: agent
+    agent: writer
+
+  - id: step-05
+    name: "Approve Report"
+    type: checkpoint
+```
+
+## Pipeline Execution Flow
+
+The Pipeline Runner executes steps in order:
+
+1. **Initialization**
+   - Load squad.yaml, squad-party.csv, company context, squad memory
+   - Read pipeline.yaml
+   - Verify all skills are installed
+   - Create run folder: `squads/{squad}/output/{YYYY-MM-DD-HHmmss}/`
+   - Initialize state.json for dashboard
+
+2. **For Each Step**
+   - Update dashboard (write state.json)
+   - If checkpoint: present to user, wait for input, optionally save to outputFile
+   - If agent:
+     - Load agent file and inject format/skill instructions
+     - If agent has tasks: execute tasks in sequence
+     - If agent has no tasks: execute monolithically
+     - Check veto conditions
+     - Apply output path transformations (run_id + version folders)
+   - Dashboard handoff animation (3 second pause)
+
+3. **Output Path Transformation**
+   - Insert run_id: `output/file.md` → `output/{run_id}/file.md`
+   - Insert version folder: `output/{run_id}/file.md` → `output/{run_id}/v1/file.md`
+   - Version increments if step runs multiple times (review loops)
+
+4. **After Completion**
+   - Write final state.json with `status: completed`
+   - Update squad memory with preferences and outcomes
+   - Present completion summary with output paths
+
+## Review Loops and Veto Conditions
+
+### Veto Conditions (Internal Quality Loop)
+
+Veto conditions trigger automatic retries BEFORE the output reaches the next step:
+
+```markdown
+## Veto Conditions
+
+Reject and redo if ANY are true:
+1. Fewer than 5 stories found - broaden search queries
+2. All stories from same source - diversify sources
+3. Any URL returns 404 - replace with verified story
+```
+
+- Checked immediately after agent completes
+- Maximum 2 retry attempts per step
+- After 2 failures, present to user for manual decision
+- Prevents obvious issues from reaching reviewer
+
+### Review Loops (User Approval)
+
+Configure with `on_reject` in pipeline.yaml:
+
+```yaml
+steps:
+  - id: step-06
+    name: "Create Content"
+    type: agent
+    agent: copywriter
+
+  - id: step-07
+    name: "Review"
+    type: agent
+    agent: reviewer
+    on_reject: step-06  # Loop back to creation
+    max_review_cycles: 3
+```
+
+- If reviewer rejects, pipeline returns to `step-06`
+- Reviewer feedback is passed to the writer
+- Maximum cycles prevent infinite loops
+- After max cycles, user decides whether to proceed
+
+## Best Practices
+
+### Checkpoint Placement
+
+<ResponseField name="Research Focus" type="mandatory">
+  **ALWAYS** add a checkpoint immediately BEFORE every researcher step. Researchers run as subagents and cannot ask questions interactively.
+</ResponseField>
+
+<ResponseField name="News Selection" type="recommended">
+  When research fetches MULTIPLE stories, add a checkpoint after research where user selects ONE story to develop.
+</ResponseField>
+
+<ResponseField name="Content Approval" type="mandatory">
+  **MANDATORY** checkpoint immediately before any execution step (image generation, publishing, distribution). Never place execution steps directly after creation without approval.
+  
+  ✅ `[copywriter → checkpoint → designer]`
+  
+  ❌ `[copywriter → designer → checkpoint]`
+</ResponseField>
+
+<ResponseField name="Final Approval" type="recommended">
+  Always end with a final approval checkpoint after review, before publishing/distribution.
+</ResponseField>
+
+### Step Naming
+
+- Use clear, action-oriented names: "Find News", "Select Angle", "Create Content"
+- Number steps sequentially: `step-01`, `step-02`, etc.
+- Include agent role in agent step files: `step-02-research.md`, `step-06-copywriter.md`
+
+### Performance Mode Impact
+
+**Alta Performance**:
+- More steps (3-5 tasks per agent)
+- Dedicated optimization tasks
+- Full review with separate scoring and feedback tasks
+- Platform-specific creators for each format
+
+**Econômico**:
+- Fewer steps (1-2 tasks per agent)
+- Combined optimization in creation task
+- Lightweight single-pass review
+- Single generic writer for all formats
+
+### Output File Organization
+
+```
+squads/{squad}/
+  output/
+    {run_id}/              # Timestamped run folder
+      v1/                  # Version 1 (first attempt)
+        ranked-stories.yaml
+        angles-brief.yaml
+      v2/                  # Version 2 (after review rejection)
+        angles-brief.yaml
+      slides/
+        v1/
+          slide-01.md
+          slide-02.md
+        v2/
+          slide-01.md      # After revision
+  pipeline/
+    data/                  # Reference materials (build-time)
+      research-brief.md
+      quality-criteria.md
+```
+
+## Validation Checklist
+
+<ResponseField name="Pipeline YAML" type="checklist">
+  - [ ] All required metadata fields present
+  - [ ] Every step has unique id
+  - [ ] All agent references match actual agent IDs
+  - [ ] Dependencies form valid DAG (no cycles)
+  - [ ] All checkpoint steps listed in `checkpoints` array
+  - [ ] Mode is either `alta-performance` or `economico`
+</ResponseField>
+
+<ResponseField name="Step Files" type="checklist">
+  - [ ] Every step referenced in pipeline.yaml has a corresponding file
+  - [ ] Agent steps have required frontmatter: execution, agent, outputFile
+  - [ ] Checkpoint steps have `type: checkpoint` frontmatter
+  - [ ] Agent step outputs start with `squads/{code}/output/`
+  - [ ] All inputFile paths exist or will be created by previous steps
+  - [ ] Context Loading lists all required files
+  - [ ] Output Examples are complete and realistic
+</ResponseField>
+
+<ResponseField name="Flow Logic" type="checklist">
+  - [ ] Research focus checkpoint precedes every researcher step
+  - [ ] Content approval checkpoint precedes all execution steps
+  - [ ] Review loops have max_review_cycles set
+  - [ ] Optional steps marked with `optional: true`
+  - [ ] Parallel steps (if any) have no dependencies on each other
+</ResponseField>
+
+## Next Steps
+
+<Card title="Creating Agents" icon="robot" href="/development/creating-agents">
+  Build the agents that execute pipeline steps
+</Card>
+
+<Card title="Agent YAML Format" icon="file-code" href="/development/agent-yaml-format">
+  Complete specification of agent file format
+</Card>
+
+<Card title="Creating Skills" icon="puzzle-piece" href="/development/creating-skills">
+  Extend agent capabilities with custom skills and tools
+</Card>

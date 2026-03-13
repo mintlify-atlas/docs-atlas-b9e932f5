@@ -1,0 +1,572 @@
+---
+title: "pipeline.yaml"
+description: "Pipeline definition file format for step-by-step squad execution"
+---
+
+# pipeline.yaml Format
+
+The `pipeline.yaml` file defines the execution sequence, checkpoints, agent assignments, and output artifacts for a squad's workflow.
+
+## File Location
+
+```
+squads/{squad-code}/pipeline/pipeline.yaml
+```
+
+## Complete Example
+
+```yaml
+name: "Pipeline — Fábrica de Carrosséis"
+version: "2.0.0"
+created: "2026-03-03"
+squad: "instagram-carrossel"
+
+description: >
+  Pipeline completo para transformar um tema em carrossel de Instagram publicado
+  automaticamente. 7 checkpoints de controle garantem que o usuário aprova cada
+  decisão crítica antes de avançar.
+
+mode: "alta-performance"
+
+steps:
+  - id: step-01
+    name: "Entrada de Conteúdo"
+    type: checkpoint
+    file: steps/step-01-input-content.md
+
+  - id: step-02
+    name: "Pesquisa de Notícias"
+    type: agent
+    agent: researcher
+    tasks:
+      - find-and-rank-news
+    file: steps/step-02-find-news.md
+    depends_on: step-01
+
+  - id: step-03
+    name: "Seleção de Notícia"
+    type: checkpoint
+    file: steps/step-03-select-story.md
+    depends_on: step-02
+
+  - id: step-04
+    name: "Geração de Ângulos"
+    type: agent
+    agent: copywriter
+    tasks:
+      - generate-angles
+    file: steps/step-04-generate-angles.md
+    depends_on: step-03
+
+  - id: step-05
+    name: "Seleção de Ângulo"
+    type: checkpoint
+    file: steps/step-05-select-angle.md
+    depends_on: step-04
+
+  - id: step-06
+    name: "Criação do Copy"
+    type: agent
+    agent: copywriter
+    tasks:
+      - create-slides
+      - optimize-copy
+    file: steps/step-06-create-copy.md
+    depends_on: step-05
+
+  - id: step-07
+    name: "Aprovação do Texto"
+    type: checkpoint
+    file: steps/step-07-approve-copy.md
+    depends_on: step-06
+
+  - id: step-08
+    name: "Criação de Slides"
+    type: agent
+    agent: image-designer
+    tasks:
+      - create-slides
+      - render-export
+    file: steps/step-08-create-slides.md
+    depends_on: step-07
+
+  - id: step-09
+    name: "Aprovação das Imagens"
+    type: checkpoint
+    file: steps/step-09-approve-images.md
+    depends_on: step-08
+
+  - id: step-10
+    name: "Revisão de Qualidade"
+    type: agent
+    agent: reviewer
+    optional: true
+    tasks:
+      - score-content
+      - generate-feedback
+    file: steps/step-10-review.md
+    depends_on: step-09
+
+  - id: step-11
+    name: "Publicação"
+    type: agent
+    agent: publisher
+    tasks:
+      - validate-publish
+    file: steps/step-11-publish.md
+    depends_on: step-10
+
+checkpoints:
+  - step-01  # Input: tema + prazo
+  - step-03  # Seleção de notícia
+  - step-05  # Seleção de ângulo
+  - step-07  # Aprovação do texto
+  - step-09  # Aprovação das imagens
+
+output:
+  artifacts:
+    - output/ranked-stories.yaml
+    - output/selected-story.yaml
+    - output/angles-brief.yaml
+    - output/selected-angle.yaml
+    - output/carousel-draft.md
+    - output/slides/
+    - output/slides/rendered/
+    - output/review-final.md
+    - output/publish-report.md
+```
+
+## Schema Reference
+
+### Metadata Fields
+
+<ParamField path="name" type="string" required>
+  Human-readable pipeline name displayed in execution logs.
+  
+  **Example:** `Pipeline — Fábrica de Carrosséis`
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  Semantic version number for the pipeline configuration.
+  
+  **Format:** `MAJOR.MINOR.PATCH`
+</ParamField>
+
+<ParamField path="created" type="string" required>
+  ISO date when the pipeline was created.
+  
+  **Format:** `YYYY-MM-DD`
+</ParamField>
+
+<ParamField path="squad" type="string" required>
+  Squad code this pipeline belongs to. Must match the squad directory name.
+  
+  **Example:** `instagram-carrossel`
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Multi-line description of the pipeline's purpose and workflow. Supports YAML block scalar syntax (`>`).
+</ParamField>
+
+<ParamField path="mode" type="string" required>
+  Performance mode determining execution depth.
+  
+  **Options:**
+  - `alta-performance` — Full pipeline with multiple optimization passes
+  - `economico` — Lightweight single-pass execution
+</ParamField>
+
+### Steps
+
+<ParamField path="steps" type="array" required>
+  Ordered list of pipeline steps. Steps execute sequentially according to `depends_on` relationships.
+  
+  <Expandable title="Step Object Schema">
+    <ParamField path="id" type="string" required>
+      Unique step identifier. Convention: `step-{NN}` with zero-padded number.
+      
+      **Example:** `step-01`, `step-02`, `step-10`
+    </ParamField>
+    
+    <ParamField path="name" type="string" required>
+      Human-readable step name displayed during execution.
+      
+      **Example:** `Pesquisa de Notícias`, `Seleção de Ângulo`
+    </ParamField>
+    
+    <ParamField path="type" type="string" required>
+      Step execution type.
+      
+      **Options:**
+      - `checkpoint` — User interaction point, pauses execution for input
+      - `agent` — Agent execution step
+    </ParamField>
+    
+    <ParamField path="agent" type="string">
+      **Required for `type: agent` steps.** Agent ID to execute this step.
+      
+      Must match an agent ID defined in `squad.yaml`.
+      
+      **Example:** `researcher`, `copywriter`, `reviewer`
+    </ParamField>
+    
+    <ParamField path="tasks" type="array">
+      **Optional for `type: agent` steps.** List of task IDs to execute within this step.
+      
+      Tasks execute sequentially. Final task output becomes step output.
+      
+      ```yaml
+      tasks:
+        - find-and-rank-news
+        - generate-angles
+      ```
+    </ParamField>
+    
+    <ParamField path="file" type="string" required>
+      Path to step definition file relative to pipeline directory.
+      
+      **Format:** `steps/step-{NN}-{name}.md`
+      
+      **Example:** `steps/step-02-find-news.md`
+    </ParamField>
+    
+    <ParamField path="depends_on" type="string">
+      Step ID that must complete before this step runs. Defines execution order.
+      
+      **Example:** `step-01`, `step-05`
+    </ParamField>
+    
+    <ParamField path="optional" type="boolean">
+      Whether this step can be skipped by user choice during execution.
+      
+      **Default:** `false`
+    </ParamField>
+  </Expandable>
+  
+  ```yaml
+  steps:
+    - id: step-01
+      name: "Research Focus"
+      type: checkpoint
+      file: steps/step-01-input.md
+    
+    - id: step-02
+      name: "Find News"
+      type: agent
+      agent: researcher
+      tasks:
+        - find-and-rank-news
+      file: steps/step-02-find-news.md
+      depends_on: step-01
+  ```
+</ParamField>
+
+### Checkpoints
+
+<ParamField path="checkpoints" type="array">
+  List of step IDs that are checkpoints. Used for quick reference and validation.
+  
+  **All steps with `type: checkpoint` must be listed here.**
+  
+  ```yaml
+  checkpoints:
+    - step-01
+    - step-03
+    - step-05
+    - step-07
+  ```
+</ParamField>
+
+### Output
+
+<ParamField path="output" type="object">
+  Pipeline output configuration.
+  
+  <Expandable title="Output Object Schema">
+    <ParamField path="artifacts" type="array">
+      List of output file paths and directories produced by the pipeline.
+      
+      **Paths are relative to squad directory.**
+      
+      ```yaml
+      artifacts:
+        - output/ranked-stories.yaml
+        - output/carousel-draft.md
+        - output/slides/
+        - output/slides/rendered/
+      ```
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Step File Format
+
+Each step references a Markdown file in `pipeline/steps/` with YAML frontmatter and structured instructions.
+
+### Agent Step Example
+
+```markdown
+---
+execution: subagent
+agent: researcher
+format: instagram-feed
+inputFile: squads/instagram-carrossel/pipeline/data/research-focus.md
+outputFile: squads/instagram-carrossel/output/ranked-stories.yaml
+model_tier: powerful
+---
+
+# Step 02: Pesquisador — Busca de Notícias
+
+## Context Loading
+
+Load these files before executing:
+- `output/research-focus.md` — User-provided topic and time range
+- `_opensquad/_memory/company.md` — Company context and target audience
+- `pipeline/data/domain-framework.md` — News research best practices
+
+## Instructions
+
+### Process
+
+1. Parse research-focus.md to extract topic, time range, and constraints
+2. Design 3-5 diverse search queries covering different angles of the topic
+3. Execute web_search for each query, collect 15-20 candidate stories
+4. Filter by date — remove stories outside requested time range
+5. Verify sources using web_fetch to confirm URLs are accessible
+6. Score each story on surprise, relevance, data strength, timeliness (1-10)
+7. Rank by viral_potential_score, select top 5-7 with source diversity
+8. Write output to ranked-stories.yaml
+
+## Output Format
+
+```yaml
+stories:
+  - title: "..."
+    summary: "..."
+    source: "..."
+    url: "..."
+    date: "YYYY-MM-DD"
+    viral_potential_score: 8
+    why_interesting: "..."
+    key_data: "..."
+```
+
+## Output Example
+
+```yaml
+stories:
+  - title: "Claude 4 Achieves 95% on SWE-bench"
+    summary: Anthropic's Claude 4 scored 95% on software engineering benchmark, beating GPT-5 (89%) and human experts (92%).
+    source: TechCrunch
+    url: https://techcrunch.com/2026/03/12/claude-4-swe-bench
+    date: "2026-03-12"
+    viral_potential_score: 9
+    why_interesting: "First AI to beat human engineers — will fuel massive debate"
+    key_data: "95% vs 92% human baseline"
+```
+
+## Veto Conditions
+
+Reject and redo if ANY are true:
+1. Output contains fewer than 5 stories
+2. Any story is outside the requested time range
+3. More than 2 stories from the same source
+4. Any URL fails verification (404, broken, mismatched content)
+
+## Quality Criteria
+
+- [ ] Output is valid YAML
+- [ ] Contains 5-7 stories (not fewer, not more)
+- [ ] Stories sorted by viral_potential_score descending
+- [ ] All required fields present for each story
+- [ ] viral_potential_score values span a range (not all 8-10)
+```
+
+### Checkpoint Step Example
+
+```markdown
+---
+type: checkpoint
+outputFile: squads/instagram-carrossel/pipeline/data/research-focus.md
+---
+
+# 🛑 Checkpoint: Research Focus
+
+## For the Pipeline Runner
+
+This checkpoint collects the research topic and time range from the user.
+
+## User Prompt
+
+🎯 Let's create an Instagram carousel.
+
+What **topic** do you want to explore today?
+Examples: "AI for entrepreneurs", "no-code tools", "marketing automation"
+
+What **time range** should I search?
+1. Last 24 hours
+2. Last 7 days
+3. Last month
+4. No time restriction (evergreen)
+
+## Pipeline Runner Action
+
+1. Collect user's topic and time range selection
+2. Save to `output/research-focus.md` in this format:
+
+```markdown
+# Research Focus
+
+**Topic:** [user's topic]
+**Time Range:** [selected option]
+**Date:** YYYY-MM-DD
+```
+
+3. Proceed to Step 02 (Researcher)
+```
+
+### Step Frontmatter Fields
+
+<ParamField path="execution" type="string">
+  **For agent steps.** How the agent runs.
+  
+  **Options:**
+  - `subagent` — Runs in background via Task tool
+  - `inline` — Runs in main conversation
+</ParamField>
+
+<ParamField path="agent" type="string">
+  **For agent steps.** Agent ID to execute.
+</ParamField>
+
+<ParamField path="format" type="string">
+  **Optional.** Platform format ID. Pipeline Runner auto-injects best-practice file from `_opensquad/core/best-practices/{format}.md`.
+  
+  **Examples:** `instagram-feed`, `linkedin-post`, `twitter-thread`
+</ParamField>
+
+<ParamField path="inputFile" type="string">
+  **For agent steps.** Path to input file from previous step.
+  
+  **Example:** `squads/instagram-carrossel/output/research-focus.md`
+</ParamField>
+
+<ParamField path="outputFile" type="string">
+  **For agent steps and some checkpoints.** Path where step output is saved.
+  
+  **Agent step outputs MUST use:** `squads/{code}/output/{filename}`
+  
+  **Checkpoint outputs use:** `squads/{code}/pipeline/data/{filename}` (for reference data)
+  
+  **Example:** `squads/instagram-carrossel/output/ranked-stories.yaml`
+</ParamField>
+
+<ParamField path="model_tier" type="string">
+  **For `execution: subagent` only.** Model tier to use when dispatching subagent.
+  
+  **Options:**
+  - `fast` — Lightweight model (for data extraction, investigation)
+  - `powerful` — Default model (for writing, creation, review)
+  
+  **Omit for `execution: inline` steps.**
+</ParamField>
+
+<ParamField path="type" type="string">
+  **For checkpoint steps.** Must be `checkpoint`.
+</ParamField>
+
+## Validation Rules
+
+<Note>
+**Required pipeline fields:** `name`, `version`, `created`, `squad`, `description`, `mode`, `steps`
+
+**Step dependencies:**
+- All steps except the first must have `depends_on`
+- `depends_on` must reference a valid step ID that appears earlier in the `steps` array
+
+**Checkpoint validation:**
+- All steps with `type: checkpoint` must be listed in `checkpoints[]`
+- Checkpoint step files must use `type: checkpoint` in frontmatter
+
+**Agent step validation:**
+- All `agent` values must match agent IDs defined in `squad.yaml`
+- Agent step files must include `execution` and `agent` in frontmatter
+- Agent step `outputFile` must start with `squads/{code}/output/`
+
+**File references:**
+- All `file` paths must exist at `squads/{code}/pipeline/{file}`
+</Note>
+
+## Design Patterns
+
+### Research → Checkpoint → Creation Pattern
+
+```yaml
+steps:
+  - id: step-01
+    type: checkpoint  # User provides research focus
+    
+  - id: step-02
+    type: agent       # Researcher finds stories
+    agent: researcher
+    depends_on: step-01
+    
+  - id: step-03
+    type: checkpoint  # User selects story
+    depends_on: step-02
+    
+  - id: step-04
+    type: agent       # Creator writes content
+    agent: copywriter
+    depends_on: step-03
+```
+
+### Content Approval Gate Pattern
+
+**Critical rule:** Any agent step that produces visuals, renders images, or publishes MUST have a checkpoint immediately before it.
+
+```yaml
+steps:
+  - id: step-06
+    type: agent
+    agent: copywriter  # Creates text content
+    
+  - id: step-07
+    type: checkpoint   # User approves text
+    depends_on: step-06
+    
+  - id: step-08
+    type: agent
+    agent: image-designer  # Renders images
+    depends_on: step-07
+    
+  - id: step-09
+    type: checkpoint   # User approves images
+    depends_on: step-08
+    
+  - id: step-10
+    type: agent
+    agent: publisher   # Publishes to platform
+    depends_on: step-09
+```
+
+### Review Loop Pattern
+
+```yaml
+steps:
+  - id: step-06
+    type: agent
+    agent: copywriter
+    
+  - id: step-07
+    type: agent
+    agent: reviewer
+    on_reject: step-06  # Loop back to copywriter if rejected
+    depends_on: step-06
+```
+
+## Related Files
+
+- [squad.yaml](/api/squad-yaml) — Squad configuration that references this pipeline
+- [.agent.md](/api/agent-yaml) — Agent definitions referenced in steps
+- [Step File Format](#step-file-format) — Detailed step file specification

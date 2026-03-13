@@ -1,0 +1,727 @@
+---
+title: Pipelines
+description: Sequential workflows that orchestrate agent execution with checkpoints and quality gates
+icon: diagram-project
+---
+
+A **pipeline** is the workflow that orchestrates how agents execute in sequence, when users approve work, and how outputs flow between agents.
+
+## What is a Pipeline?
+
+Think of a pipeline like a production line in a factory. Each station (step) has a worker (agent) with a specific task. Work passes from one station to the next, with quality checks (checkpoints) at critical points.
+
+<Info>
+Pipelines are **declarative** — you define the sequence of steps once, and the Pipeline Runner executes them automatically.
+</Info>
+
+## Pipeline Structure
+
+Every pipeline consists of:
+
+<Steps>
+  <Step title="Steps">
+    Individual operations performed by agents or checkpoints where users approve/reject work.
+    
+    Steps execute sequentially. Each step has:
+    - An agent (who does the work)
+    - Input file (what they read)
+    - Output file (what they produce)
+    - Execution mode (inline or subagent)
+  </Step>
+  
+  <Step title="Checkpoints">
+    Pause points where the user makes decisions.
+    
+    Common checkpoints:
+    - Research focus (what topic to research)
+    - Angle selection (which creative direction to take)
+    - Content approval (before publishing)
+    - Final approval (before delivery)
+  </Step>
+  
+  <Step title="Quality Gates">
+    Automatic validation that rejects bad outputs before they reach reviewers.
+    
+    Each step can have **veto conditions** — hard rules that trigger automatic redo if violated.
+  </Step>
+  
+  <Step title="Review Loops">
+    Paths that send rejected work back to earlier steps for revision.
+    
+    Example: If reviewer rejects → loop back to writer with feedback.
+  </Step>
+</Steps>
+
+## Pipeline Definition: pipeline.yaml
+
+From `architect.agent.yaml:484` and step files in templates:
+
+```yaml
+# squads/content-carousel/pipeline/pipeline.yaml
+pipeline:
+  name: "Instagram Carousel Creation"
+  description: "Research trending topics and create viral carousels"
+  max_review_cycles: 2
+  
+  steps:
+    - id: research-focus
+      file: steps/step-01-research-focus.md
+      type: checkpoint
+      
+    - id: research
+      file: steps/step-02-research.md
+      agent: researcher
+      execution: subagent
+      model_tier: fast
+      on_success: select-news
+      
+    - id: select-news
+      file: steps/step-03-select-news.md
+      type: checkpoint
+      on_success: generate-angles
+      
+    - id: generate-angles
+      file: steps/step-04-generate-angles.md
+      agent: writer
+      execution: inline
+      on_success: select-angle
+      
+    - id: select-angle
+      file: steps/step-05-select-angle.md
+      type: checkpoint
+      on_success: create-content
+      
+    - id: create-content
+      file: steps/step-06-create-content.md
+      agent: writer
+      execution: inline
+      format: instagram-feed
+      on_success: approve-content
+      
+    - id: approve-content
+      file: steps/step-07-approve-content.md
+      type: checkpoint
+      on_success: review
+      
+    - id: review
+      file: steps/step-08-review.md
+      agent: reviewer
+      execution: inline
+      on_success: final-approval
+      on_reject: create-content
+      
+    - id: final-approval
+      file: steps/step-09-final-approval.md
+      type: checkpoint
+      on_reject: create-content
+```
+
+### Pipeline Fields
+
+<AccordionGroup>
+  <Accordion title="steps" icon="list">
+    Ordered list of pipeline steps. Each step has:
+    - `id`: Unique step identifier
+    - `file`: Path to step definition (relative to pipeline directory)
+    - `type`: Either `agent` (work step) or `checkpoint` (approval step)
+    - `agent`: (For agent steps) Which agent executes this step
+    - `execution`: (For agent steps) `inline` or `subagent`
+    - `model_tier`: (For subagent steps) `fast` or `powerful`
+    - `format`: (Optional) Platform format to inject (e.g., `instagram-feed`)
+    - `on_success`: Next step ID on success
+    - `on_reject`: (Optional) Step ID to loop back to on rejection
+  </Accordion>
+  
+  <Accordion title="max_review_cycles" icon="rotate">
+    Maximum number of times a review loop can execute before escalating to the user.
+    
+    Prevents infinite loops if reviewer keeps rejecting.
+    
+    Default: 2
+  </Accordion>
+</AccordionGroup>
+
+## Step Types
+
+### Agent Steps
+
+Steps where an agent performs work. From `runner.pipeline.md:196-254`:
+
+```yaml
+# Step file: steps/step-02-research.md
+---
+execution: subagent
+agent: researcher
+format: instagram-feed            # Optional: inject platform best practices
+inputFile: pipeline/data/research-focus.md
+outputFile: output/research-brief.md
+model_tier: fast                  # For subagents: fast or powerful
+---
+
+# Step 2: Research Trending Topics
+
+## Context Loading
+
+Load these files before executing:
+- `pipeline/data/research-focus.md` — User-specified research topic and time range
+- `pipeline/data/domain-framework.md` — Instagram content frameworks
+- `_opensquad/_memory/company.md` — Brand context and positioning
+
+## Instructions
+
+### Process
+1. Read the research focus to understand the topic and time range
+2. Use `web_search` to find 10-15 recent articles, posts, and discussions on the topic
+3. For each result, evaluate relevance (does it match the focus?) and recency (within time range?)
+4. Fetch the top 5 most relevant sources using `web_fetch` and extract:
+   - Main insight or development
+   - Supporting data (stats, quotes, case studies)
+   - Engagement indicators (comments, shares, reactions)
+5. Rank the sources by: relevance to brand + novelty + engagement potential
+
+## Output Format
+
+The output MUST follow this exact structure:
+```yaml
+topic: "[research focus from input]"
+time_range: "[time range from input]"
+date: "YYYY-MM-DD"
+sources:
+  - id: 1
+    title: "[article/post title]"
+    url: "[source URL]"
+    date: "YYYY-MM-DD"
+    summary: "[2-3 sentence summary of the main insight]"
+    key_data:
+      - "[stat or quote]"
+      - "[stat or quote]"
+    relevance_score: [1-10]
+    reasoning: "[why this source matters for the brand]"
+  # ... (5 sources total)
+recommendation:
+  source_id: 1
+  reason: "[why this is the best source for content creation]"
+```
+
+## Output Example
+
+```yaml
+topic: "AI coding agents impact on developer productivity"
+time_range: "Last 7 days"
+date: "2026-03-13"
+sources:
+  - id: 1
+    title: "Cursor's AI agents ship features 3x faster, study finds"
+    url: "https://example.com/cursor-study"
+    date: "2026-03-10"
+    summary: "New research shows developers using Cursor's AI agents completed feature development 3x faster than traditional workflows, with comparable code quality. Study tracked 200 developers over 60 days."
+    key_data:
+      - "3x faster feature development"
+      - "200 developers, 60-day study"
+      - "95% reported higher satisfaction"
+    relevance_score: 9
+    reasoning: "Directly addresses productivity gains with concrete data. Relevant to SaaS founder audience who care about team efficiency."
+  - id: 2
+    title: "Why AI agents won't replace developers (yet)"
+    url: "https://example.com/ai-agents-limits"
+    date: "2026-03-09"
+    summary: "Despite the hype, AI coding agents struggle with architecture decisions, debugging complex systems, and understanding business context. They excel at boilerplate and refactoring."
+    key_data:
+      - "Failed 40% of architecture tasks"
+      - "80% success on refactoring"
+      - "Average 30% time savings overall"
+    relevance_score: 8
+    reasoning: "Contrarian angle that challenges mainstream narrative. Appeals to skeptics and provides balanced view."
+  # ... (3 more sources)
+recommendation:
+  source_id: 1
+  reason: "Most concrete data, recent, and aligns with brand's optimistic/empowerment positioning. Strong foundation for opportunity angle."
+```
+
+## Veto Conditions
+
+Reject and redo if ANY of these are true:
+1. Fewer than 5 sources provided
+2. Any source older than the specified time range
+3. Missing key_data for any source (must have at least 1 stat/quote per source)
+
+## Quality Criteria
+
+- [ ] All sources are from the specified time range
+- [ ] Each source has a clear summary (2-3 sentences)
+- [ ] Key data includes specific numbers or quotes (not vague statements)
+- [ ] Relevance scores reflect brand positioning from company.md
+- [ ] Recommendation is justified with clear reasoning
+```
+
+### Checkpoint Steps
+
+Steps where the user makes decisions. From `runner.pipeline.md:256-271`:
+
+```yaml
+# Step file: steps/step-03-select-news.md
+---
+type: checkpoint
+---
+
+# Select News Story
+
+Based on the research, which story should we develop into a carousel?
+
+Here are the top stories found:
+
+{Insert dynamic list from previous step's output}
+
+1. **{source 1 title}** — {source 1 summary}
+   Key data: {key_data points}
+   
+2. **{source 2 title}** — {source 2 summary}
+   Key data: {key_data points}
+   
+3. **{source 3 title}** — {source 3 summary}
+   Key data: {key_data points}
+
+4. Search for more stories (restarts research with refined focus)
+
+**Reply with a number (1-4)**
+```
+
+Checkpoint behavior (from `runner.pipeline.md:256-271`):
+- Present options to the user
+- Wait for input (number selection or free text)
+- Save response for next step
+- If checkpoint has `outputFile` in frontmatter → write response to that file
+
+### Research Focus Checkpoint
+
+From `architect.agent.yaml:487-514`, every squad with a researcher MUST have a checkpoint before the research step:
+
+```yaml
+# Step file: steps/step-01-research-focus.md
+---
+type: checkpoint
+outputFile: pipeline/data/research-focus.md
+---
+
+# Research Focus
+
+**Squad Purpose**: Create viral Instagram carousels
+**Company**: {company name from company.md}
+
+What topic should I research today?
+
+Example: "AI coding agents impact on developers", "SaaS pricing strategies 2026", "Instagram algorithm changes"
+
+**Type your topic**:
+
+---
+
+**Time range** — how recent should sources be?
+
+1. Last 24 hours
+2. Last 7 days
+3. Last month
+4. No time restriction (evergreen)
+
+**Reply with a number (1-4)**:
+```
+
+The Pipeline Runner writes the user's response to `pipeline/data/research-focus.md` in this format:
+
+```markdown
+# Research Focus
+
+**Topic:** AI coding agents impact on developers
+**Time Range:** Last 7 days
+**Date:** 2026-03-13
+```
+
+The next step (researcher) reads this file as `inputFile`.
+
+<Note>
+Researchers run as subagents — they CANNOT ask questions interactively. The checkpoint collects all needed input BEFORE the subagent starts.
+</Note>
+
+## Pipeline Execution
+
+From `runner.pipeline.md`, here's how pipelines execute:
+
+### Initialization
+
+<Steps>
+  <Step title="Load squad files">
+    - `squad.yaml` (squad definition)
+    - `squad-party.csv` (agent manifest)
+    - `pipeline/pipeline.yaml` (pipeline definition)
+    - Company context from `_opensquad/_memory/company.md`
+  </Step>
+  
+  <Step title="Resolve skills">
+    For each non-native skill in `squad.yaml`:
+    - Check if `skills/{skill}/SKILL.md` exists
+    - If missing → prompt user to install or abort
+    - Verify MCP configuration (for MCP skills)
+    
+    All skills must resolve before pipeline starts (**fail fast**).
+  </Step>
+  
+  <Step title="Create run folder">
+    Generate run ID: `YYYY-MM-DD-HHmmss` (e.g., `2026-03-13-143022`)
+    
+    Create `squads/{name}/output/{run_id}/` for this execution's outputs.
+  </Step>
+  
+  <Step title="Initialize state.json">
+    Create `squads/{name}/state.json` with:
+    - Squad metadata
+    - All agents with desk positions (col, row)
+    - Current step (0 of total)
+    - Status: idle → running
+    
+    This file is read by the Virtual Office dashboard for real-time visualization.
+  </Step>
+  
+  <Step title="Inform user">
+    ```
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    🚀 Running squad: Instagram Carousel
+    📋 Pipeline: 9 steps
+    🤖 Agents: Rita Research, Clara Copy, Victor Verdict
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ```
+  </Step>
+</Steps>
+
+### Step-by-Step Execution
+
+For each step in the pipeline:
+
+<Steps>
+  <Step title="Update dashboard (before step)">
+    Write `state.json` with:
+    - Current step number and label
+    - Current agent status: `working`
+    - All other agents: `idle` or `done`
+  </Step>
+  
+  <Step title="Read step file">
+    Load `pipeline/steps/{step-file}.md` and parse frontmatter.
+  </Step>
+  
+  <Step title="Execute based on type">
+    **For agent steps**:
+    - **Inline**: Switch to agent persona, follow step instructions, present output in conversation
+    - **Subagent**: Dispatch via Task tool with agent definition + step instructions, wait for completion
+    
+    **For checkpoints**:
+    - Present options to user
+    - Wait for input
+    - Save response (and write to `outputFile` if specified)
+  </Step>
+  
+  <Step title="Check veto conditions">
+    After agent completes, evaluate step's veto conditions against output.
+    
+    If ANY veto triggered:
+    - Inform user: "⚠️ {Agent} output triggered veto: {condition}"
+    - Ask agent to fix (max 2 attempts)
+    - After 2 failures → escalate to user
+  </Step>
+  
+  <Step title="Apply output path transformation">
+    From `runner.pipeline.md:160-194`:
+    
+    1. **Insert run_id**: `output/file.md` → `output/{run_id}/file.md`
+    2. **Insert version folder**: Detect existing versions in group, increment:
+       - `output/{run_id}/file.md` → `output/{run_id}/v1/file.md` (first version)
+       - If `v1` exists → `output/{run_id}/v2/file.md` (second version)
+    
+    This ensures every output is versioned and nothing is overwritten.
+  </Step>
+  
+  <Step title="Update dashboard (handoff)">
+    If there's a next step:
+    
+    1. Write `state.json` with handoff:
+       ```json
+       {
+         "handoff": {
+           "from": "researcher",
+           "to": "writer",
+           "message": "Found 5 trending stories on AI coding agents",
+           "completedAt": "2026-03-13T14:32:15Z"
+         }
+       }
+       ```
+       Current agent: `status: delivering`, `deliverTo: writer`
+    
+    2. Wait 3 seconds (for animation)
+    
+    3. Write `state.json` again:
+       Current agent: `status: done`, `deliverTo: null`
+       Next agent: `status: working`
+  </Step>
+</Steps>
+
+### Review Loops
+
+From `runner.pipeline.md:291-297`:
+
+When a reviewer rejects content:
+
+1. Check `on_reject` field in step definition → find target step ID
+2. Increment review cycle count
+3. If under `max_review_cycles` → jump to target step, pass reviewer feedback to agent
+4. If at limit → present to user: "Max review cycles reached. Manual decision needed."
+
+Example flow:
+```
+Writer (step 6) → Reviewer (step 8) → REJECT
+  ↓
+Jump back to Writer (step 6) with feedback
+  ↓
+Writer revises → Reviewer (step 8) → APPROVE
+  ↓
+Continue to final approval (step 9)
+```
+
+### Completion
+
+<Steps>
+  <Step title="Update dashboard (completed)">
+    Write `state.json` with:
+    - Status: `completed`
+    - All agents: `status: done`
+    - Preserve handoff object
+  </Step>
+  
+  <Step title="Update squad memory">
+    Append to `_memory/memories.md`:
+    - What the user approved/rejected
+    - Review cycle count
+    - Any preferences detected
+  </Step>
+  
+  <Step title="Present completion summary">
+    ```
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    ✅ Pipeline complete!
+    📁 Run folder: squads/content-carousel/output/2026-03-13-143022/
+    📄 Output saved to: output/2026-03-13-143022/v2/carousel-draft.md
+    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    
+    What would you like to do?
+    ● Run again (new topic)
+    ○ Edit this content
+    ○ Back to menu
+    ```
+  </Step>
+  
+  <Step title="Cleanup">
+    After 10 seconds (so dashboard shows completion), delete `state.json`.
+    
+    This removes the squad from active monitoring.
+  </Step>
+</Steps>
+
+## Output Versioning
+
+Every pipeline run creates a **timestamped run folder**, and every output is **versioned**:
+
+```
+output/
+├── 2026-03-13-143022/          # Run 1
+│   ├── v1/
+│   │   └── carousel-draft.md   # First version
+│   └── v2/
+│       └── carousel-draft.md   # Revised after review
+├── 2026-03-13-151045/          # Run 2 (different topic)
+│   └── v1/
+│       └── carousel-draft.md
+└── 2026-03-14-091522/          # Run 3
+    ├── v1/
+    │   └── carousel-draft.md
+    └── v2/
+        └── carousel-draft.md
+```
+
+- **Run folders** are created at pipeline start
+- **Version folders** are created when a step writes output
+- **Versions increment** within a run when output is regenerated (e.g., after review rejection)
+
+<Info>
+You never lose work — every version is preserved. The latest version is always the highest `vN`.
+</Info>
+
+## Quality Gates: Veto Conditions
+
+From `runner.pipeline.md:273-289` and `architect.agent.yaml:956-963`:
+
+Every step can define **veto conditions** — hard rules that trigger automatic redo:
+
+```markdown
+## Veto Conditions
+
+Reject and redo if ANY of these are true:
+1. Slides exceed 30 words per slide
+2. No CTA in final slide
+3. Missing source citations
+```
+
+After an agent completes:
+1. Pipeline Runner checks output against veto conditions
+2. If ANY condition is true:
+   - Inform user: "⚠️ {Agent} output triggered veto: {condition}"
+   - Ask agent to fix the specific issue
+   - Max 2 fix attempts
+3. After 2 failures → escalate to user for manual decision
+
+This catches obvious quality issues **before** the reviewer sees them, reducing wasted review cycles.
+
+## Content Approval Gates
+
+From `architect.agent.yaml:45-46` and `architect.agent.yaml:576`:
+
+> **Content Approval checkpoint is MANDATORY** whenever the pipeline includes any execution step after content creation (image generation, visual rendering, publishing, distribution, etc.). Never place an execution step immediately after a creation step without a checkpoint in between.
+
+### Correct Pattern
+
+```
+Writer → 🛑 Approve Content → Designer → Reviewer
+```
+
+User approves text BEFORE visuals are generated.
+
+### Incorrect Pattern
+
+```
+Writer → Designer → 🛑 Approve Visuals
+```
+
+Waste: If user rejects text, visuals were generated for nothing.
+
+<Warning>
+Always place approval checkpoints IMMEDIATELY before expensive or irreversible operations (image rendering, API calls, publishing).
+</Warning>
+
+## Common Pipeline Patterns
+
+### Content Creation (Fixed Source)
+
+```
+Research → 🛑 Select Angle → Create → 🛑 Approve → Review → 🛑 Final Approval
+```
+
+Use when: Creating content from a known source (uploaded file, specific URL).
+
+### Content Creation (News-Based)
+
+```
+Research → 🛑 Select News → Create[angles] → 🛑 Select Angle → Create[content] → 🛑 Approve → Review → 🛑 Final Approval
+```
+
+Use when: Finding and selecting from multiple news stories.
+
+### Data Analysis
+
+```
+Load Data → 🛑 Confirm Metrics → Analyze → 🛑 Review Insights → Generate Report → 🛑 Final Approval
+```
+
+Use when: Analyzing uploaded data or API-fetched metrics.
+
+### Customer Support
+
+```
+Load Ticket → Investigate → Draft Response → 🛑 Approve or Escalate
+```
+
+Use when: Handling support requests with optional escalation.
+
+## Format Injection
+
+From `runner.pipeline.md:96-108`:
+
+Steps can specify a `format` field to inject platform-specific best practices:
+
+```yaml
+---
+execution: inline
+agent: writer
+format: instagram-feed    # Inject Instagram carousel guidelines
+inputFile: pipeline/data/angles-brief.yaml
+outputFile: output/carousel-draft.md
+---
+```
+
+The Pipeline Runner:
+1. Reads `_opensquad/core/best-practices/instagram-feed.md`
+2. Extracts the markdown body
+3. Appends to agent context before skill instructions:
+   ```
+   [Agent definition]
+   
+   --- FORMAT: Instagram Feed & Carousels ---
+   [Platform-specific guidelines]
+   
+   --- SKILL INSTRUCTIONS ---
+   [Skill instructions]
+   ```
+
+This keeps agent definitions generic while applying platform expertise at runtime.
+
+## Best Practices
+
+<Steps>
+  <Step title="One responsibility per step">
+    Don't combine research + writing in a single step. Break it into separate steps with clear handoffs.
+    
+    ✅ Research → Select Angle → Create
+    
+    ❌ Research and Create (combined)
+  </Step>
+  
+  <Step title="Checkpoint before every decision">
+    If the user needs to choose (topic, angle, approval), add a checkpoint.
+    
+    Researchers can't ask questions — they're subagents.
+  </Step>
+  
+  <Step title="Use veto conditions for quality">
+    Catch obvious issues (missing data, wrong format, excessive length) with veto conditions.
+    
+    This reduces reviewer workload.
+  </Step>
+  
+  <Step title="Version outputs per run">
+    Every run gets its own folder. Every regeneration gets a new version.
+    
+    You never lose work — all versions are preserved.
+  </Step>
+  
+  <Step title="Use review loops sparingly">
+    Max 2 review cycles. After that, escalate to the user.
+    
+    Prevents infinite loops if agent can't meet criteria.
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Squads" icon="users" href="/concepts/squads">
+    Learn how pipelines fit into squad definitions
+  </Card>
+  
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Understand how agents execute pipeline steps
+  </Card>
+  
+  <Card title="Virtual Office" icon="building" href="/concepts/virtual-office">
+    Watch pipeline execution in real-time
+  </Card>
+  
+  <Card title="Create Your First Squad" icon="rocket" href="/quickstart">
+    Build a squad with a custom pipeline
+  </Card>
+</CardGroup>

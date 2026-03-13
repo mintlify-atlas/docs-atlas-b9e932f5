@@ -1,0 +1,313 @@
+---
+title: Squads
+description: Multi-agent teams that collaborate to complete complex workflows
+icon: users
+---
+
+A **squad** is a team of specialized AI agents working together to accomplish a goal. Each squad has a clear purpose, a defined workflow, and agents with specific roles.
+
+## What is a Squad?
+
+Think of a squad like a small specialized team in a company. Just as you might have a content team with researchers, writers, and editors, an OpenSquad has AI agents filling those roles, each with their own expertise and responsibilities.
+
+<Info>
+Squads are **composable** — you can create squads for different purposes (content creation, data analysis, customer support) and run them independently or chain them together.
+</Info>
+
+## Squad Structure
+
+Every squad consists of three core components:
+
+<Steps>
+  <Step title="Agents">
+    The team members — each agent has a specialized role, persona, and set of skills. Agents can work inline (in the main conversation) or as background subagents.
+    
+    Example: A content squad might have a Researcher, Writer, and Reviewer.
+  </Step>
+  
+  <Step title="Pipeline">
+    The workflow — defines the sequence of steps, when agents hand off work to each other, and where user approval is required.
+    
+    Example: Research → Select Angle → Create Content → Approve → Publish
+  </Step>
+  
+  <Step title="Data & Skills">
+    The resources — reference materials (domain frameworks, quality criteria, examples) and integrations (web search, APIs, scripts) that agents use.
+    
+    Example: Copywriting best practices, tone-of-voice guidelines, Instagram publishing API
+  </Step>
+</Steps>
+
+## Squad Definition: squad.yaml
+
+Each squad is defined in a `squad.yaml` file. Here's a real example from the OpenSquad templates:
+
+```yaml
+squad:
+  code: "content-carousel"
+  name: "Instagram Carousel Creator"
+  description: "Researches trending topics and creates viral carousel posts"
+  icon: "📱"
+  version: "1.0.0"
+
+# Skills the squad can use
+skills:
+  - web_search      # Native: web research
+  - web_fetch       # Native: fetch web pages
+  - instagram-api   # Custom: publish to Instagram
+
+# Reference materials for agents
+data:
+  - pipeline/data/research-brief.md
+  - pipeline/data/domain-framework.md
+  - pipeline/data/quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/anti-patterns.md
+  - pipeline/data/tone-of-voice.md
+
+# Pipeline entry point
+pipeline:
+  entry: pipeline/pipeline.yaml
+  steps:
+    - step-01-research-focus.md
+    - step-02-research.md
+    - step-03-select-angle.md
+    - step-04-create-content.md
+    - step-05-approve-content.md
+    - step-06-review.md
+    - step-07-final-approval.md
+```
+
+### Key Fields
+
+<AccordionGroup>
+  <Accordion title="code" icon="tag">
+    Unique identifier for the squad. Used in file paths and references.
+    
+    **Format**: lowercase-with-hyphens
+    
+    **Example**: `content-carousel`, `data-analysis`, `customer-support`
+  </Accordion>
+  
+  <Accordion title="name & description" icon="file-lines">
+    Human-readable name and short description of what the squad does.
+    
+    Displayed in the dashboard and when listing squads.
+  </Accordion>
+  
+  <Accordion title="icon" icon="smile">
+    Emoji representing the squad's purpose.
+    
+    **Examples**: 📱 (social media), 📊 (analytics), 📧 (email)
+  </Accordion>
+  
+  <Accordion title="skills" icon="puzzle-piece">
+    List of integrations the squad can use. Can include:
+    - Native skills: `web_search`, `web_fetch`
+    - MCP servers: `apify`, `playwright`, `canva`
+    - Custom scripts: `image-optimizer`, `seo-analyzer`
+    - Prompt libraries: `copywriting-frameworks`
+    
+    Agents reference these in their own definitions.
+  </Accordion>
+  
+  <Accordion title="data" icon="database">
+    Reference materials created during squad setup:
+    - **research-brief.md**: Domain knowledge gathered during creation
+    - **domain-framework.md**: Step-by-step methodology for the domain
+    - **quality-criteria.md**: What makes output high-quality
+    - **output-examples.md**: Real examples of excellent work
+    - **anti-patterns.md**: Common mistakes to avoid
+    - **tone-of-voice.md**: (Content squads) Voice and style guidelines
+    
+    These files are read by agents during pipeline execution.
+  </Accordion>
+  
+  <Accordion title="pipeline" icon="diagram-project">
+    Points to the pipeline definition and lists all step files.
+    
+    The Pipeline Runner executes these in order, handling checkpoints and agent handoffs.
+  </Accordion>
+</AccordionGroup>
+
+## Squad Directory Structure
+
+When you create a squad, OpenSquad generates this structure:
+
+```
+squads/content-carousel/
+├── squad.yaml                      # Squad definition
+├── squad-party.csv                 # Agent manifest
+├── agents/                         # Agent definitions
+│   ├── researcher.agent.md
+│   ├── writer.agent.md
+│   ├── reviewer.agent.md
+│   └── writer/tasks/               # Task decomposition (optional)
+│       ├── generate-angles.md
+│       ├── create-carousel.md
+│       └── optimize-hooks.md
+├── pipeline/
+│   ├── pipeline.yaml               # Pipeline entry point
+│   ├── steps/                      # Pipeline steps
+│   │   ├── step-01-research-focus.md
+│   │   ├── step-02-research.md
+│   │   └── ...
+│   └── data/                       # Reference materials
+│       ├── research-brief.md
+│       ├── domain-framework.md
+│       ├── quality-criteria.md
+│       ├── output-examples.md
+│       └── anti-patterns.md
+├── output/                         # Generated content
+│   └── 2026-03-13-143022/         # Run folder (timestamped)
+│       ├── v1/                     # Version 1
+│       │   └── carousel-draft.md
+│       └── v2/                     # Version 2 (after revision)
+│           └── carousel-draft.md
+├── _memory/
+│   └── memories.md                 # Squad-specific memory
+├── _investigations/                # (Optional) Sherlock analyses
+│   ├── profile-username-1/
+│   │   ├── raw-content.md
+│   │   └── pattern-analysis.md
+│   └── consolidated-analysis.md
+└── state.json                      # (Temporary) Real-time execution state
+```
+
+<Note>
+The `state.json` file only exists while the squad is running. It's read by the Virtual Office dashboard to show real-time progress.
+</Note>
+
+## Squad Creation Phases
+
+When you create a squad with `/opensquad create`, the Architect agent guides you through these phases:
+
+### Phase 1: Discovery (3-4 questions)
+
+- **Purpose**: What should this squad do?
+- **Audience/Context**: Who is this for? What platform?
+- **References**: Any examples to follow?
+- **Performance Mode**: High-quality (more tokens) vs. Economical (fewer tokens)
+
+### Phase 1.5: Investigation (optional)
+
+If you provide reference URLs (Instagram, YouTube, Twitter, LinkedIn), the **Sherlock** investigator analyzes real content to extract:
+- Structural patterns (hooks, CTAs, formatting)
+- Engagement data (what performs well)
+- Voice and tone patterns
+- Content frameworks used
+
+This data enriches agent definitions with real examples instead of generic templates.
+
+### Phase 2: Research
+
+The Architect researches domain knowledge:
+- Frameworks and methodologies
+- Output examples from real professionals
+- Common mistakes and anti-patterns
+- Quality criteria and benchmarks
+
+This takes 1-2 minutes and ensures agents have deep domain expertise.
+
+### Phase 3: Extraction
+
+Transforms research into operational artifacts:
+- Agent-specific operational frameworks
+- Complete output examples (not skeletons)
+- Domain vocabulary (always use / never use)
+- Quality criteria with measurable thresholds
+
+### Phase 4: Design
+
+Presents the squad design for your approval:
+- Agent list with roles and icons
+- Pipeline flow with checkpoints
+- Reference materials and skills
+- Task decomposition per agent
+
+You can request changes before building.
+
+### Phase 5: Build
+
+Generates all files atomically:
+- `squad.yaml` and `squad-party.csv`
+- Agent definitions (`.agent.md` files)
+- Task files (if agents use task decomposition)
+- Pipeline steps
+- Reference materials
+
+<Info>
+All files are created in a single operation — you never get a half-built squad.
+</Info>
+
+## Squad Types
+
+OpenSquad supports many squad types. Here are common patterns:
+
+<CardGroup cols={2}>
+  <Card title="Content Creation" icon="pen">
+    Researcher → Writer → Reviewer
+    
+    Creates social media posts, articles, emails, scripts. Includes platform-specific agents (Instagram, LinkedIn, Twitter, YouTube).
+  </Card>
+  
+  <Card title="Data Analysis" icon="chart-line">
+    Researcher → Analyst → Report Writer
+    
+    Analyzes data, extracts insights, produces reports with visualizations and recommendations.
+  </Card>
+  
+  <Card title="Customer Support" icon="headset">
+    Investigator → Responder → Escalator
+    
+    Handles support requests, drafts responses, escalates complex issues with context.
+  </Card>
+  
+  <Card title="Automation" icon="gears">
+    Monitor → Executor → Notifier
+    
+    Watches for triggers, executes actions (APIs, scripts), notifies stakeholders.
+  </Card>
+</CardGroup>
+
+## Performance Modes
+
+Squads can be optimized for quality or efficiency:
+
+| Mode | Agents | Tasks per Agent | Review | Tokens |
+|------|--------|-----------------|--------|--------|
+| **High Performance** | Platform-specific (e.g., "Instagram Writer", "LinkedIn Writer") | 3-5 tasks | Full scoring + feedback | High |
+| **Economical** | Generic (e.g., "Writer") | 1-2 tasks | Lightweight single-pass | Low |
+
+**High Performance** is recommended for production content. **Economical** is good for drafts and experimentation.
+
+## Managing Squads
+
+Once created, you can:
+
+- **Run**: `/opensquad run <name>` — Execute the pipeline
+- **Edit**: `/opensquad edit <name>` — Modify agents or pipeline
+- **List**: `/opensquad list` — See all squads
+- **Delete**: `/opensquad delete <name>` — Remove a squad
+
+Squads are **version-controlled** — each run creates a timestamped folder with versioned outputs.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    Learn how agents work, their structure, and communication patterns
+  </Card>
+  
+  <Card title="Pipelines" icon="diagram-project" href="/concepts/pipelines">
+    Understand pipeline execution, steps, and checkpoints
+  </Card>
+  
+  <Card title="Skills" icon="puzzle-piece" href="/concepts/skills">
+    Explore the skills system and available integrations
+  </Card>
+  
+  <Card title="Virtual Office" icon="building" href="/concepts/virtual-office">
+    Monitor squad execution in real-time with the visual dashboard
+  </Card>
+</CardGroup>

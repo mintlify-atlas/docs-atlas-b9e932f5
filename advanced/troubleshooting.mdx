@@ -1,0 +1,1004 @@
+---
+title: 'Troubleshooting'
+description: 'Common issues and solutions for OpenSquad'
+icon: 'wrench'
+---
+
+This guide covers common issues you may encounter when using OpenSquad and how to resolve them.
+
+## Installation Issues
+
+<AccordionGroup>
+  <Accordion title="npx opensquad init fails with 'command not found'">
+    **Symptom:** Running `npx opensquad init` returns `command not found` or `package not found`.
+
+    **Cause:** Node.js is not installed or npm registry is unreachable.
+
+    **Solution:**
+
+    1. Verify Node.js installation:
+       ```bash
+       node --version
+       npm --version
+       ```
+
+       Required: Node.js 20+
+
+    2. If not installed:
+       - Download from [nodejs.org](https://nodejs.org)
+       - Or use a version manager (nvm, fnm, volta)
+
+    3. If installed but npx fails:
+       ```bash
+       npm install -g npx
+       npx opensquad init
+       ```
+
+    4. Check npm registry:
+       ```bash
+       npm config get registry
+       # Should return: https://registry.npmjs.org/
+       ```
+
+  </Accordion>
+
+  <Accordion title="Installation succeeds but no files are created">
+    **Symptom:** `npx opensquad init` completes without errors, but no `_opensquad/` directory exists.
+
+    **Cause:** Write permission issues or incorrect working directory.
+
+    **Solution:**
+
+    1. Check current directory:
+       ```bash
+       pwd  # or cd on Windows
+       # Should be your project root
+       ```
+
+    2. Verify write permissions:
+       ```bash
+       touch test.txt && rm test.txt
+       # If this fails, you don't have write permissions
+       ```
+
+    3. Run with explicit directory:
+       ```bash
+       npx opensquad init --target-dir ./
+       ```
+
+    4. Check for errors in `~/.npm/_logs/` (npm logs failed writes here)
+
+  </Accordion>
+
+  <Accordion title="Prompts don't appear (hangs during setup)">
+    **Symptom:** After running `init`, no prompts appear. Terminal hangs.
+
+    **Cause:** Interactive prompt library issue or CI environment detection.
+
+    **Solution:**
+
+    1. Ensure you're in an interactive terminal (not a CI runner)
+
+    2. Check if stdin is available:
+       ```bash
+       tty
+       # Should return a device path like /dev/ttys001
+       # If "not a tty" → you're in a non-interactive environment
+       ```
+
+    3. Use test mode to skip prompts:
+       ```bash
+       OPENSQUAD_TEST_MODE=1 npx opensquad init
+       ```
+
+       This creates a default setup (English, Claude Code).
+
+  </Accordion>
+
+  <Accordion title="VS Code settings.json merge warning">
+    **Symptom:** Installation shows warning: `.vscode/settings.json has invalid JSON — skipping merge`
+
+    **Cause:** Existing `settings.json` has syntax errors.
+
+    **Solution:**
+
+    1. Open `.vscode/settings.json`
+    2. Fix JSON syntax errors (use VS Code's JSON validation)
+    3. Manually add:
+       ```json
+       {
+         "chat.promptFilesLocations": [".github/prompts"]
+       }
+       ```
+
+    4. Or re-run installation:
+       ```bash
+       npx opensquad init
+       # Select VS Code + Copilot again
+       ```
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Onboarding & Configuration
+
+<AccordionGroup>
+  <Accordion title="Onboarding wizard loops infinitely">
+    **Symptom:** Every time you activate OpenSquad, the onboarding wizard runs again.
+
+    **Cause:** `_opensquad/_memory/company.md` is empty or contains the unconfigured marker.
+
+    **Solution:**
+
+    1. Check company.md:
+       ```bash
+       cat _opensquad/_memory/company.md
+       ```
+
+    2. If it contains `<!-- NOT CONFIGURED -->` or is empty:
+       - Complete the onboarding wizard fully
+       - Or manually populate it with company information
+
+    3. Verify it saved:
+       ```bash
+       cat _opensquad/_memory/company.md | grep -v "NOT CONFIGURED"
+       # Should show your company profile
+       ```
+
+    4. If it keeps resetting:
+       - Check write permissions on `_memory/` directory
+       - Verify no `.gitignore` is excluding `_memory/company.md`
+       - Check for cloud sync conflicts (Dropbox, OneDrive, etc.)
+
+  </Accordion>
+
+  <Accordion title="Language preference not persisting">
+    **Symptom:** OpenSquad reverts to English despite selecting Portuguese or Spanish.
+
+    **Cause:** `preferences.md` is not being read or is malformed.
+
+    **Solution:**
+
+    1. Verify preferences file:
+       ```bash
+       cat _opensquad/_memory/preferences.md
+       ```
+
+       Should contain:
+       ```markdown
+       - **Output Language:** Português (Brasil)
+       ```
+
+    2. If missing, recreate it:
+       ```bash
+       mkdir -p _opensquad/_memory
+       cat > _opensquad/_memory/preferences.md <<EOF
+       # Opensquad Preferences
+
+       - **User Name:** Your Name
+       - **Output Language:** Português (Brasil)
+       - **IDEs:** claude-code
+       - **Date Format:** YYYY-MM-DD
+       EOF
+       ```
+
+    3. Restart your IDE
+
+  </Accordion>
+
+  <Accordion title="Company profile not loading in squads">
+    **Symptom:** Squad runs don't seem to use company context (generic outputs).
+
+    **Cause:** Pipeline Runner is not reading `company.md` or the file is empty.
+
+    **Solution:**
+
+    1. Verify company.md has content:
+       ```bash
+       wc -l _opensquad/_memory/company.md
+       # Should be >10 lines
+       ```
+
+    2. Check squad.yaml doesn't override context:
+       ```bash
+       grep -A5 "data:" squads/your-squad/squad.yaml
+       # Should NOT have company.md in gitignore
+       ```
+
+    3. Manually test context loading:
+       - Run a squad
+       - Check if the first step's output mentions your company name
+       - If not: company.md is not being loaded
+
+    4. Update company profile:
+       ```
+       /opensquad edit-company
+       ```
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Squad Creation Issues
+
+<AccordionGroup>
+  <Accordion title="Architect fails to generate squad files">
+    **Symptom:** Squad creation workflow completes but `squads/{name}/` directory is missing files.
+
+    **Cause:** Subagent dispatch failed or Write tool errors.
+
+    **Solution:**
+
+    1. Check for error messages in the conversation history
+
+    2. Verify disk space:
+       ```bash
+       df -h .
+       ```
+
+    3. Check for path issues (Windows backslash vs. forward slash):
+       - OpenSquad uses forward slashes internally
+       - If on Windows, verify paths in error messages
+
+    4. Re-run creation with explicit paths:
+       ```
+       /opensquad create "your squad description"
+       ```
+
+       Watch for file creation confirmations in output.
+
+    5. If generation stops mid-way:
+       - Check token limits (conversation too long)
+       - Start a new conversation and try again
+
+  </Accordion>
+
+  <Accordion title="Missing task files after squad creation">
+    **Symptom:** Agent frontmatter lists tasks, but `agents/{agent}/tasks/` directory is empty.
+
+    **Cause:** Architect declared `tasks:` in frontmatter but didn't generate the task files.
+
+    **Solution:**
+
+    1. Verify agent frontmatter:
+       ```bash
+       head -20 squads/{squad}/agents/{agent}.agent.md
+       ```
+
+       Check for:
+       ```yaml
+       tasks:
+         - tasks/task-one.md
+         - tasks/task-two.md
+       ```
+
+    2. Check if task files exist:
+       ```bash
+       ls squads/{squad}/agents/{agent}/tasks/
+       ```
+
+    3. If missing:
+       ```
+       /opensquad edit {squad} "Generate missing task files for {agent}"
+       ```
+
+    4. Or manually create them following the task file format (see Best Practices)
+
+  </Accordion>
+
+  <Accordion title="Research focus checkpoint not saving input">
+    **Symptom:** Researcher step fails with "input file not found: research-focus.md"
+
+    **Cause:** Checkpoint step doesn't have `outputFile` in frontmatter.
+
+    **Solution:**
+
+    1. Check checkpoint step file:
+       ```bash
+       head -10 squads/{squad}/pipeline/steps/step-01-research-focus.md
+       ```
+
+       Should have:
+       ```yaml
+       ---
+       type: checkpoint
+       outputFile: squads/{squad}/pipeline/data/research-focus.md
+       ---
+       ```
+
+    2. If missing, edit the step file to add `outputFile`
+
+    3. Or regenerate the squad:
+       ```
+       /opensquad delete {squad}
+       /opensquad create "recreate the squad"
+       ```
+
+  </Accordion>
+
+  <Accordion title="Investigation fails: Sherlock can't analyze profiles">
+    **Symptom:** Sherlock investigation step returns errors or incomplete data.
+
+    **Cause:** Missing browser dependencies or login required.
+
+    **Solution:**
+
+    1. Verify Playwright installation:
+       ```bash
+       npx playwright --version
+       ```
+
+       If not installed:
+       ```bash
+       npx playwright install chromium
+       ```
+
+    2. For social platforms, log in once manually:
+       - Run a squad that uses browser automation
+       - When the browser opens, log in to Instagram/LinkedIn/etc.
+       - Session saves to `_opensquad/_browser_profile/`
+       - Subsequent runs reuse the session
+
+    3. For YouTube video analysis:
+       ```bash
+       # Install yt-dlp
+       pip install yt-dlp
+
+       # Install ffmpeg
+       # macOS:
+       brew install ffmpeg
+       # Ubuntu:
+       sudo apt install ffmpeg
+
+       # Install whisper
+       pip install openai-whisper
+       ```
+
+    4. Check prerequisites before investigation:
+       ```bash
+       yt-dlp --version
+       ffmpeg -version
+       whisper --help
+       ```
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Squad Execution Issues
+
+<AccordionGroup>
+  <Accordion title="Pipeline fails on first step">
+    **Symptom:** Pipeline starts but fails immediately on step 1.
+
+    **Cause:** Missing input file, agent file not found, or skill not installed.
+
+    **Solution:**
+
+    1. Check error message for specifics:
+       - "Agent file not found" → regenerate squad
+       - "Skill 'X' not installed" → install the skill
+       - "Input file missing" → check if previous step's output exists
+
+    2. Verify squad structure:
+       ```bash
+       tree squads/{squad}/
+       ```
+
+       Should have:
+       ```
+       squads/{squad}/
+         agents/
+           researcher.agent.md
+           writer.agent.md
+           ...
+         pipeline/
+           pipeline.yaml
+           steps/
+             step-01-*.md
+             ...
+         squad.yaml
+         squad-party.csv
+       ```
+
+    3. Check squad.yaml for missing fields:
+       ```bash
+       cat squads/{squad}/squad.yaml | grep -E "^(name|code|pipeline)"
+       ```
+
+    4. Re-run from a fresh conversation (token limits can cause truncated squad files)
+
+  </Accordion>
+
+  <Accordion title="Subagent dispatch hangs indefinitely">
+    **Symptom:** Pipeline shows "Agent X is working in the background..." but never completes.
+
+    **Cause:** Subagent encountered an error or infinite loop.
+
+    **Solution:**
+
+    1. **Wait 5 minutes** — Some research steps are legitimately slow
+
+    2. Check IDE logs for errors:
+       - Claude Code: View → Output → select "Language Server"
+       - Cursor: similar logs in Output panel
+       - VS Code: Copilot Chat doesn't support true background tasks (may need manual intervention)
+
+    3. If truly hung:
+       - Cancel the conversation
+       - Edit the squad to change `execution: subagent` → `execution: inline` for that step
+       - Re-run (now you can see what's happening)
+
+    4. Common subagent hang causes:
+       - WebSearch returns zero results (agent loops trying different queries)
+       - Browser automation requires login but no session exists
+       - Output file path is invalid (Windows path issues)
+
+  </Accordion>
+
+  <Accordion title="Checkpoint options don't appear / hangs">
+    **Symptom:** Checkpoint step is reached but no options are presented.
+
+    **Cause:** Checkpoint step file is malformed or IDE doesn't support AskUserQuestion.
+
+    **Solution:**
+
+    1. Verify checkpoint format:
+       ```bash
+       cat squads/{squad}/pipeline/steps/step-*-checkpoint.md
+       ```
+
+       Should have:
+       ```yaml
+       ---
+       type: checkpoint
+       ---
+
+       [Question text]
+
+       1. Option A
+       2. Option B
+       3. Option C
+       ```
+
+    2. **Claude Code specific:** Ensure AskUserQuestion tool is available
+       - If options don't appear, the skill may not be calling the tool
+       - Check `.claude/skills/opensquad/SKILL.md` has checkpoint handling logic
+
+    3. **Cursor / VS Code:** Numbered lists should render as plain text
+       - If you don't see them, the step file may not have been read
+       - Check step file path in `pipeline.yaml`
+
+    4. Manually respond:
+       - Type the number (e.g., `2`) and press Enter
+       - If that doesn't work, type the full option text
+
+  </Accordion>
+
+  <Accordion title="Veto conditions trigger incorrectly">
+    **Symptom:** Agent completes a step, then immediately rejects it with a veto error.
+
+    **Cause:** Veto condition is too strict or has a logic error.
+
+    **Solution:**
+
+    1. Check the veto condition in the step file:
+       ```markdown
+       ## Veto Conditions
+       Reject if:
+       1. Slides exceed 30 words
+       ```
+
+    2. Verify the agent's output:
+       ```bash
+       cat squads/{squad}/output/{run-id}/v1/draft.md
+       ```
+
+       Does it actually violate the condition?
+
+    3. If the condition is wrong:
+       - Edit the step file to adjust the threshold
+       - Or remove the veto condition entirely
+
+    4. If the condition is correct but enforcement is broken:
+       - Check if the Pipeline Runner is reading the step file correctly
+       - Verify the veto logic in `_opensquad/core/runner.pipeline.md`
+
+    5. Override veto manually:
+       - After 2 veto attempts, Pipeline Runner escalates to user
+       - Approve manually to bypass
+
+  </Accordion>
+
+  <Accordion title="Review loop: same feedback every time">
+    **Symptom:** Reviewer rejects content with the same issue across 3+ cycles.
+
+    **Cause:** Writer agent doesn't understand the feedback or lacks the capability to fix it.
+
+    **Solution:**
+
+    1. **After 3 cycles, Pipeline Runner escalates** — approve manually or abort
+
+    2. Check if feedback is actionable:
+       - "Improve tone" → NOT actionable
+       - "Rewrite para 4 to use active verbs: 'Launch your campaign' instead of 'A campaign can be launched'" → Actionable
+
+    3. If feedback is vague, edit the reviewer agent:
+       ```
+       /opensquad edit {squad} "Update reviewer to provide more specific feedback"
+       ```
+
+    4. If feedback is specific but writer can't fix:
+       - The writer agent may lack the operational framework to make the change
+       - Edit the writer agent to add the missing capability
+
+    5. Temporary fix:
+       - Manually edit the content in `squads/{squad}/output/{run-id}/v1/draft.md`
+       - Then approve at the next checkpoint
+
+  </Accordion>
+
+  <Accordion title="Output files missing or in wrong location">
+    **Symptom:** Pipeline completes but output files are not where expected.
+
+    **Cause:** Output path misconfiguration or versioning confusion.
+
+    **Solution:**
+
+    1. Check the run folder:
+       ```bash
+       ls -la squads/{squad}/output/
+       # Should show folders like: 2026-03-13-143022/
+       ```
+
+    2. Inside the run folder:
+       ```bash
+       tree squads/{squad}/output/2026-03-13-143022/
+       # Should show versioned subdirectories:
+       # v1/, v2/, v3/ (for each revision)
+       ```
+
+    3. If files are in `pipeline/data/` instead:
+       - This is a bug in the step configuration
+       - Step `outputFile` should be `squads/{code}/output/...` not `pipeline/data/...`
+       - Edit the step file to fix the path
+
+    4. If files don't exist at all:
+       - Agent may have failed silently
+       - Check for error messages in conversation history
+       - Re-run the squad with `execution: inline` to see what's happening
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Skill & MCP Issues
+
+<AccordionGroup>
+  <Accordion title="Skill installation fails">
+    **Symptom:** `npx opensquad install <skill>` returns an error.
+
+    **Cause:** Skill not found in registry or network error.
+
+    **Solution:**
+
+    1. Verify skill exists:
+       ```bash
+       npx opensquad skills list
+       # Check "Available:" section
+       ```
+
+    2. If skill is listed but install fails:
+       - Check internet connection
+       - Try again (transient npm registry errors)
+
+    3. If skill requires environment variables:
+       - Installation will prompt for them
+       - Provide valid API keys when asked
+
+    4. Manual installation:
+       ```bash
+       # Clone or download the skill from the catalog
+       # Copy to skills/{skill-name}/
+       # Create SKILL.md with proper frontmatter
+       ```
+
+  </Accordion>
+
+  <Accordion title="MCP server connection failed">
+    **Symptom:** Browser automation fails with "MCP server not responding" or similar.
+
+    **Cause:** MCP server not configured or Playwright not installed.
+
+    **Solution:**
+
+    1. Verify `.mcp.json` exists in project root (Claude Code) or `.cursor/mcp.json` (Cursor)
+
+    2. Check Playwright installation:
+       ```bash
+       npx playwright --version
+       ```
+
+       If not installed:
+       ```bash
+       npx playwright install chromium
+       ```
+
+    3. Restart your IDE after installing Playwright
+
+    4. **Claude Code specific:** Disable the native Playwright plugin
+       - Settings → Extensions → Playwright → Disable
+       - Restart Claude Code
+
+    5. Test MCP connection:
+       ```
+       /opensquad create "test squad with browser automation"
+       ```
+
+       If browser opens → MCP is working.
+
+  </Accordion>
+
+  <Accordion title="Browser automation requires login every time">
+    **Symptom:** Every squad run opens a browser that requires manual login to Instagram/LinkedIn/etc.
+
+    **Cause:** Browser profile is not persisting.
+
+    **Solution:**
+
+    1. Verify persistent profile directory exists:
+       ```bash
+       ls -la _opensquad/_browser_profile/
+       ```
+
+       Should contain browser data files.
+
+    2. Check MCP config points to the right profile:
+       ```bash
+       cat .mcp.json
+       # Should reference: _opensquad/config/playwright.config.json
+       ```
+
+    3. Verify `playwright.config.json` has userDataDir:
+       ```json
+       {
+         "use": {
+           "userDataDir": "_opensquad/_browser_profile"
+         }
+       }
+       ```
+
+    4. Check write permissions on `_browser_profile/`
+
+    5. If using cloud sync (Dropbox, OneDrive):
+       - Add `_browser_profile/` to exclusion list
+       - Cloud sync can corrupt browser databases
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Performance & Optimization
+
+<AccordionGroup>
+  <Accordion title="Squad runs very slowly">
+    **Symptom:** Pipeline takes 10+ minutes for simple squads.
+
+    **Cause:** Inefficient agent design, sequential execution, or slow model tier.
+
+    **Solution:**
+
+    1. **Switch to Econômico mode:**
+       ```
+       /opensquad edit {squad} "Switch to Econômico performance mode"
+       ```
+
+       This reduces tasks per agent and combines optimization steps.
+
+    2. **Enable parallel execution:**
+       - Check if multi-platform creators run sequentially
+       - Edit pipeline to mark them as parallel (all `execution: subagent`)
+
+    3. **Use fast model tier for research:**
+       ```yaml
+       # In step frontmatter:
+       model_tier: fast  # Uses Haiku or Gemini Flash
+       ```
+
+       Apply to investigator and data extraction agents.
+
+    4. **Reduce research scope:**
+       - Time range: "Last 7 days" instead of "Last month"
+       - Source count: 5-10 sources instead of 15-30
+
+    5. **Check token usage:**
+       - Very long conversations slow down
+       - Start a new conversation and re-run
+
+  </Accordion>
+
+  <Accordion title="High token consumption">
+    **Symptom:** Squads use more tokens than expected.
+
+    **Cause:** Alta Performance mode, large reference materials, or inefficient context loading.
+
+    **Solution:**
+
+    1. **Switch to Econômico mode** (see above)
+
+    2. **Reduce reference materials:**
+       ```bash
+       ls -lh squads/{squad}/pipeline/data/
+       # Check file sizes
+       ```
+
+       Large files (>50KB) get loaded into every agent's context.
+
+       Solution:
+       - Summarize research briefs
+       - Remove unused data files from `squad.yaml` → `data:` section
+
+    3. **Use task-based agents judiciously:**
+       - Tasks add context overhead (each task file is loaded)
+       - For simple agents, use monolithic definitions
+
+    4. **Avoid deep investigation mode:**
+       - Instagram: "1 post" instead of "5-10 posts"
+       - YouTube: "5 videos" instead of "10-20 videos"
+
+    5. **Optimize agent definitions:**
+       - Remove redundant examples
+       - Consolidate principles (6 focused principles > 15 generic ones)
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## IDE-Specific Issues
+
+### Claude Code
+
+<Accordion title="Skill not loading after installation">
+  **Solution:**
+  1. Restart Claude Code
+  2. Verify `.claude/skills/opensquad/SKILL.md` exists
+  3. Check frontmatter syntax (YAML must be valid)
+  4. Start a new conversation (skills load per-conversation)
+</Accordion>
+
+<Accordion title="AskUserQuestion doesn't appear">
+  **Solution:**
+  1. Verify you're using Claude Code (not Claude.ai in browser)
+  2. Update Claude Code to latest version
+  3. Check if checkpoint step is trying to use AskUserQuestion (it should be)
+  4. Fallback: numbered list should still work as plain text
+</Accordion>
+
+### Cursor
+
+<Accordion title="Rules not applying to new conversations">
+  **Solution:**
+  1. Check `.cursor/rules/opensquad.mdc` has `alwaysApply: true`
+  2. Restart Cursor
+  3. Clear conversation history and start fresh
+  4. Verify no conflicting rules in `.cursorrules` or other `.mdc` files
+</Accordion>
+
+### VS Code + Copilot
+
+<Accordion title="Prompt file autocomplete missing">
+  **Solution:**
+  1. Verify `.vscode/settings.json` has:
+     ```json
+     {"chat.promptFilesLocations": [".github/prompts"]}
+     ```
+  2. Reload VS Code window (`Cmd+Shift+P` → "Reload Window")
+  3. Check Copilot extension is active and signed in
+  4. Type `#` in chat — autocomplete should show `#opensquad`
+</Accordion>
+
+<Accordion title="Subagents don't work in Copilot Chat">
+  **Limitation:** VS Code + Copilot does not support true background subagent dispatch.
+
+  **Workaround:**
+  - All steps run inline (sequentially in the chat)
+  - Edit squad to change all `execution: subagent` → `execution: inline`
+  - Or use a different IDE for production squads (Claude Code / Cursor)
+</Accordion>
+
+---
+
+## Data & File Issues
+
+<AccordionGroup>
+  <Accordion title="Squad memory not persisting">
+    **Symptom:** Squad forgets user preferences between runs.
+
+    **Cause:** `memories.md` not being written or read.
+
+    **Solution:**
+
+    1. Verify memory file exists:
+       ```bash
+       cat squads/{squad}/_memory/memories.md
+       ```
+
+    2. Check pipeline runner is updating it:
+       - After a squad run, the file should have entries
+       - If empty: runner is not writing
+
+    3. Manually add memory:
+       ```markdown
+       # Squad Memories
+
+       - User prefers casual tone
+       - Avoid emojis in LinkedIn posts
+       - Always include CTA at the end
+       ```
+
+    4. Ensure `squad.yaml` doesn't override memory location
+
+  </Accordion>
+
+  <Accordion title="Output versioning creates too many folders">
+    **Symptom:** `output/` directory has dozens of `v1/`, `v2/`, `v3/`... folders.
+
+    **Cause:** Each rejection loop creates a new version. This is expected behavior.
+
+    **Solution:**
+
+    1. **This is normal** — versions allow rollback and comparison
+
+    2. To reduce versions:
+       - Improve agent quality (fewer rejections)
+       - Add veto conditions (catch errors before review)
+
+    3. To clean up:
+       ```bash
+       # Keep only latest version per run
+       cd squads/{squad}/output/{run-id}/
+       ls -d v*/ | sort -V | head -n -1 | xargs rm -rf
+       ```
+
+    4. Versions are scoped per output group:
+       - `slides/v1/`, `slides/v2/`... for carousel slides
+       - `posts/v1/`, `posts/v2/`... for social posts
+       - They don't conflict
+
+  </Accordion>
+
+  <Accordion title=".gitignore excludes important files">
+    **Symptom:** Squad files don't commit to git.
+
+    **Cause:** Over-aggressive `.gitignore` rules.
+
+    **Solution:**
+
+    1. Check what's ignored:
+       ```bash
+       git check-ignore -v squads/{squad}/squad.yaml
+       ```
+
+    2. OpenSquad's default `.gitignore` pattern:
+       ```gitignore
+       _opensquad/_browser_profile/
+       _opensquad/_memory/company.md
+       squads/*/output/
+       .env
+       ```
+
+    3. **DO commit:**
+       - `squads/{squad}/squad.yaml`
+       - `squads/{squad}/agents/`
+       - `squads/{squad}/pipeline/`
+       - `_opensquad/core/`
+
+    4. **DO NOT commit:**
+       - `_browser_profile/` (local browser sessions)
+       - `company.md` (company-specific, not shared)
+       - `output/` (generated files)
+       - `.env` (secrets)
+
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Debugging Techniques
+
+### Enable Verbose Logging
+
+For detailed debugging:
+
+1. **Check step-by-step execution:**
+   - Change `execution: subagent` → `execution: inline` for problematic steps
+   - You'll see exactly what the agent is doing
+
+2. **Read state.json during execution:**
+   ```bash
+   watch -n 1 cat squads/{squad}/state.json
+   ```
+
+   This shows real-time pipeline progress.
+
+3. **Inspect versioned outputs:**
+   ```bash
+   diff squads/{squad}/output/{run}/v1/draft.md \
+        squads/{squad}/output/{run}/v2/draft.md
+   ```
+
+   See what changed between revisions.
+
+### Isolate the Problem
+
+1. **Test agents individually:**
+   ```
+   /opensquad create "single-agent test squad with just the researcher"
+   ```
+
+   If the researcher works alone, the issue is in integration.
+
+2. **Simplify the pipeline:**
+   - Remove optional steps
+   - Reduce to: Research → Create → Review
+   - If that works, add steps back one at a time
+
+3. **Test without investigation:**
+   - Skip Sherlock investigation
+   - Use a fixed topic instead of research
+   - Isolates whether the problem is in investigation or creation
+
+### Common Error Messages
+
+| Error | Meaning | Solution |
+|-------|---------|----------|
+| `Agent file not found: agents/researcher.agent.md` | Squad structure incomplete | Regenerate squad |
+| `Skill 'apify' not installed` | Required skill missing | `npx opensquad install apify` |
+| `Input file missing: pipeline/data/research-focus.md` | Checkpoint didn't save | Add `outputFile` to checkpoint frontmatter |
+| `MCP server connection failed` | Playwright MCP not running | Install Playwright, restart IDE |
+| `Veto condition triggered: slides exceed 30 words` | Agent's output violated constraint | Agent will retry (or escalate after 2 attempts) |
+| `Task file not found: tasks/analyze.md` | Agent declares task but file missing | Generate task files or remove from frontmatter |
+
+---
+
+## Getting Help
+
+If you've tried the solutions above and still have issues:
+
+1. **Check the conversation history** for error messages
+2. **Read the agent/step file** that's failing — often the issue is in the configuration
+3. **Start a new conversation** — token limits can cause truncated responses
+4. **Simplify the squad** to isolate the problem
+5. **Share your error** with the OpenSquad community:
+   - Include: error message, IDE, squad.yaml snippet, step file if relevant
+   - Redact company-specific info from memory files
+
+<Tip>
+  Most issues are caused by:
+  1. Missing dependencies (Playwright, yt-dlp, ffmpeg)
+  2. Path configuration (Windows backslash vs. forward slash)
+  3. Incomplete squad files (token limit truncation)
+  4. Missing checkpoints (steps assume input that wasn't collected)
+
+  Check these first.
+</Tip>
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Best Practices" icon="star" href="/advanced/best-practices">
+    Learn how to design robust squads that avoid these issues
+  </Card>
+  <Card title="IDE Integration" icon="laptop-code" href="/advanced/ide-integration">
+    Configure your environment correctly from the start
+  </Card>
+</CardGroup>

@@ -1,0 +1,236 @@
+---
+title: 'npx opensquad init'
+description: 'Initialize OpenSquad in your project'
+icon: 'rocket'
+---
+
+## Overview
+
+The `init` command sets up OpenSquad in your project directory. It creates the necessary folder structure, installs core files, and walks you through an interactive setup wizard.
+
+## Syntax
+
+```bash
+npx opensquad init
+```
+
+## What It Does
+
+The init command performs the following steps:
+
+1. **Checks for existing installation** - Detects if OpenSquad is already initialized and offers re-configuration
+2. **Interactive setup wizard** - Prompts for user preferences:
+   - Language selection (English, Português (Brasil), Español)
+   - Your name for personalized outputs
+   - IDE/tool selection (Claude Code, Antigravity, Codex, Cursor, VS Code + Copilot)
+3. **Creates directory structure**:
+   - `_opensquad/` - Core framework files
+   - `_opensquad/_memory/` - Persistent memory and preferences
+   - `_opensquad/_investigations/` - Content analysis data
+   - `_opensquad/_browser_profile/` - Persistent browser sessions
+   - `_opensquad/config/` - Configuration files
+   - `_opensquad/core/` - Core system prompts and best practices
+   - `skills/` - Installed skills directory
+4. **Installs all available skills** - Automatically installs core skills from the registry
+5. **Installs dependencies** - Runs `npm install` for project and dashboard
+6. **Installs Playwright** - Sets up Chromium browser for web automation
+7. **Writes preferences** - Saves your configuration to `_opensquad/_memory/preferences.md`
+
+## Directory Structure Created
+
+```
+your-project/
+├── _opensquad/
+│   ├── .opensquad-version
+│   ├── _memory/
+│   │   └── preferences.md
+│   ├── _investigations/
+│   ├── _browser_profile/
+│   ├── config/
+│   └── core/
+│       └── best-practices/
+├── skills/
+├── squads/
+└── README.md
+```
+
+## Interactive Prompts
+
+### Language Selection
+
+```
+What language do you prefer for outputs?
+
+  1. Português (Brasil)
+  2. English
+  3. Español
+
+→
+```
+
+<Note>
+The language selection affects all CLI output messages and is saved to your preferences.
+</Note>
+
+### Name Input
+
+```
+What's your name? →
+```
+
+Your name is stored and used for personalized content generation.
+
+### IDE Selection
+
+```
+Which IDEs/tools do you use? (select all that apply)
+
+  ◉ Antigravity
+  ◯ Claude Code
+  ◯ Codex (OpenAI)
+  ◯ Cursor
+  ◯ VS Code + Copilot
+```
+
+OpenSquad will install IDE-specific configuration files based on your selection:
+
+- **Claude Code**: `.claude/system.md` and prompt files
+- **Cursor**: `.cursorrules` and prompt files  
+- **VS Code + Copilot**: `.github/prompts/` and `.vscode/settings.json`
+- **Antigravity**: `.antigravity/rules.md`
+- **Codex**: `AGENTS.md`
+
+## Installation Output
+
+```bash
+$ npx opensquad init
+
+  🟢 Opensquad — Setup
+
+  Welcome! Let's set up Opensquad for your project.
+
+  What's your name? → John Doe
+
+  📄 Created _opensquad/.opensquad-version
+  📄 Created _opensquad/config/agents.yaml
+  📄 Created _opensquad/core/system.md
+  📄 Created skills/opensquad/SKILL.md
+  📄 Created skills/web-search/SKILL.md
+  ...
+
+  Installing dependencies...
+  Installing dashboard dependencies...
+  Installing Playwright browsers...
+
+  ✅ Opensquad initialized successfully!
+
+  Next steps:
+  1. Open this directory in Claude Code
+  2. Type /opensquad to start the onboarding wizard
+  3. Follow the prompts to set up your company profile
+```
+
+## Re-initialization
+
+If OpenSquad is already initialized, running `init` again triggers re-configuration mode:
+
+```bash
+$ npx opensquad init
+
+  🔄 Opensquad — Re-configure
+```
+
+This allows you to:
+- Update your language preference
+- Add/remove IDE configurations
+- Reinstall core files without losing data
+
+<Warning>
+Re-initialization preserves your `_memory/`, `_investigations/`, and `squads/` directories.
+</Warning>
+
+## Preferences File
+
+After initialization, your preferences are saved to `_opensquad/_memory/preferences.md`:
+
+```markdown
+# Opensquad Preferences
+
+- **User Name:** John Doe
+- **Output Language:** English
+- **IDEs:** claude-code, cursor
+- **Date Format:** YYYY-MM-DD
+```
+
+## Exit Codes
+
+<ResponseField name="0" type="exit code">
+  Initialization completed successfully
+</ResponseField>
+
+<ResponseField name="1" type="exit code">
+  Initialization failed (missing dependencies, permission errors, etc.)
+</ResponseField>
+
+## Requirements
+
+- **Node.js**: >= 20.0.0
+- **npm**: Installed and accessible
+- **Internet connection**: Required to download skills and dependencies
+- **Write permissions**: In the target directory
+
+## Common Issues
+
+### Permission Denied
+
+```bash
+Error: EACCES: permission denied
+```
+
+Ensure you have write permissions in the target directory:
+
+```bash
+chmod u+w .
+```
+
+### Already Initialized
+
+If you see the re-configuration prompt but want a fresh install, manually delete the `_opensquad/` directory first:
+
+```bash
+rm -rf _opensquad/
+npx opensquad init
+```
+
+### Network Timeout
+
+If skill downloads fail due to network issues, you can install them individually later:
+
+```bash
+npx opensquad install <skill-name>
+```
+
+## Next Steps
+
+After initialization:
+
+1. **Start using OpenSquad**:
+   - In Claude Code: Type `/opensquad`
+   - In Cursor: Type `/opensquad`
+   - In VS Code Copilot: Type `/opensquad` in Chat (Ctrl+Alt+I)
+
+2. **Create your first squad**:
+   ```bash
+   npx opensquad create
+   ```
+
+3. **Install additional skills**:
+   ```bash
+   npx opensquad skills
+   ```
+
+## Related Commands
+
+- [npx opensquad update](/api/cli-init) - Update OpenSquad core
+- [npx opensquad skills](/api/cli-skills) - Manage skills
+- [npx opensquad agents](/api/cli-agents) - Manage agents

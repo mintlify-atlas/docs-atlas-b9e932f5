@@ -1,0 +1,508 @@
+---
+title: 'Agents Management'
+description: 'Install, update, and manage predefined OpenSquad agents'
+icon: 'robot'
+---
+
+## Overview
+
+Agents are predefined AI personas with specific roles, expertise, and best practices. OpenSquad provides commands to install, update, remove, and list agents from the central registry.
+
+## Commands
+
+### List Agents
+
+```bash
+npx opensquad agents
+# or
+npx opensquad agents list
+```
+
+Displays all installed agents with their roles and descriptions.
+
+**Output:**
+
+```bash
+$ npx opensquad agents
+
+  Opensquad Agents
+
+  Installed:
+    📝 Content Strategist (content) - Plans content strategy and editorial calendars
+    🎨 Visual Designer (creative) - Creates visual content and brand assets
+    ✍️ Copywriter (content) - Writes engaging copy for various platforms
+    🔍 SEO Specialist (technical) - Optimizes content for search engines
+    📊 Data Analyst (technical) - Analyzes data and creates insights
+
+  Browse available agents at: https://github.com/renatoasse/opensquad/tree/main/agents
+```
+
+### Install an Agent
+
+```bash
+npx opensquad agents install <agent-name>
+```
+
+Installs a predefined agent from the OpenSquad registry.
+
+**Example:**
+
+```bash
+$ npx opensquad agents install seo-specialist
+
+  Installing seo-specialist...
+  ✅ Installed: seo-specialist
+```
+
+<ParamField path="agent-name" type="string" required>
+  The identifier of the agent to install (e.g., `content-strategist`, `copywriter`)
+</ParamField>
+
+### Remove an Agent
+
+```bash
+npx opensquad agents remove <agent-name>
+```
+
+Removes an installed agent from your project.
+
+**Example:**
+
+```bash
+$ npx opensquad agents remove seo-specialist
+
+  Removing seo-specialist...
+  ✅ Removed: seo-specialist
+```
+
+<ParamField path="agent-name" type="string" required>
+  The identifier of the agent to remove
+</ParamField>
+
+### Update All Agents
+
+```bash
+npx opensquad agents update
+```
+
+Updates all installed agents to their latest versions.
+
+**Example:**
+
+```bash
+$ npx opensquad agents update
+
+  Updating all installed agents...
+  Installing content-strategist...
+  ✅ Installed: content-strategist
+  Installing copywriter...
+  ✅ Installed: copywriter
+  Installing seo-specialist...
+  ✅ Installed: seo-specialist
+
+  ✅ Updated 3 agent(s).
+```
+
+## Agent Structure
+
+Each agent is installed to `agents/<agent-name>/` with this structure:
+
+```
+agents/content-strategist/
+├── agent.md          # Agent persona and instructions
+├── meta.json         # Agent metadata
+├── best-practices/   # Domain-specific guidelines
+│   ├── content-planning.md
+│   ├── audience-research.md
+│   └── editorial-calendar.md
+└── examples/         # Example outputs
+    └── strategy-template.md
+```
+
+### agent.md
+
+Defines the agent's persona, role, and behavior:
+
+```markdown agents/content-strategist/agent.md
+# Content Strategist
+
+**Role:** Content Strategy & Planning
+**Expertise:** Editorial calendars, audience research, content planning
+**Personality:** Strategic, data-driven, creative
+
+## Instructions
+
+You are a Content Strategist specializing in multi-platform content planning.
+
+### Your Responsibilities:
+
+1. **Audience Research**
+   - Analyze target audience demographics
+   - Identify pain points and interests
+   - Research competitor content strategies
+
+2. **Content Planning**
+   - Create editorial calendars
+   - Plan content themes and topics
+   - Suggest content formats (blog, video, social, etc.)
+
+3. **Strategy Development**
+   - Define content goals (awareness, leads, sales)
+   - Recommend distribution channels
+   - Plan content cadence and timing
+
+### Best Practices:
+
+- Always base recommendations on data and audience insights
+- Consider the full customer journey
+- Balance evergreen and trending topics
+- Plan content 30-90 days in advance
+- Include metrics for success measurement
+
+### Tools You Use:
+
+- web-search - Research trends and competitors
+- data-analyzer - Analyze audience data
+- calendar-generator - Create editorial calendars
+
+### Output Format:
+
+Deliver content strategies as structured documents with:
+- Executive summary
+- Audience analysis
+- Content themes and topics
+- Editorial calendar
+- Success metrics
+```
+
+### meta.json
+
+Provides agent metadata:
+
+```json agents/content-strategist/meta.json
+{
+  "id": "content-strategist",
+  "name": "Content Strategist",
+  "icon": "📝",
+  "category": "content",
+  "version": "1.0.0",
+  "description": {
+    "en": "Plans content strategy and editorial calendars",
+    "pt-BR": "Planeja estratégia de conteúdo e calendários editoriais",
+    "es": "Planifica estrategia de contenido y calendarios editoriales"
+  },
+  "recommendedTools": [
+    "web-search",
+    "data-analyzer",
+    "calendar-generator"
+  ],
+  "bestPracticeFiles": [
+    "content-planning.md",
+    "audience-research.md",
+    "editorial-calendar.md"
+  ]
+}
+```
+
+## Agent Categories
+
+Agents are organized by category:
+
+### Content Agents
+
+<ResponseField name="content-strategist" type="agent">
+  Plans content strategy and editorial calendars
+</ResponseField>
+
+<ResponseField name="copywriter" type="agent">
+  Writes engaging copy for various platforms
+</ResponseField>
+
+<ResponseField name="blog-writer" type="agent">
+  Specializes in long-form blog content
+</ResponseField>
+
+<ResponseField name="social-media-manager" type="agent">
+  Creates and schedules social media content
+</ResponseField>
+
+<ResponseField name="email-marketer" type="agent">
+  Writes email newsletters and campaigns
+</ResponseField>
+
+### Creative Agents
+
+<ResponseField name="visual-designer" type="agent">
+  Creates visual content and brand assets
+</ResponseField>
+
+<ResponseField name="video-editor" type="agent">
+  Edits and produces video content
+</ResponseField>
+
+<ResponseField name="brand-designer" type="agent">
+  Develops brand identity and guidelines
+</ResponseField>
+
+### Technical Agents
+
+<ResponseField name="seo-specialist" type="agent">
+  Optimizes content for search engines
+</ResponseField>
+
+<ResponseField name="data-analyst" type="agent">
+  Analyzes data and creates insights
+</ResponseField>
+
+<ResponseField name="web-developer" type="agent">
+  Builds and maintains websites
+</ResponseField>
+
+<ResponseField name="qa-tester" type="agent">
+  Tests and validates functionality
+</ResponseField>
+
+### Research Agents
+
+<ResponseField name="market-researcher" type="agent">
+  Conducts market and competitor research
+</ResponseField>
+
+<ResponseField name="fact-checker" type="agent">
+  Verifies information accuracy
+</ResponseField>
+
+<ResponseField name="trend-analyst" type="agent">
+  Identifies and analyzes trends
+</ResponseField>
+
+## Using Agents in Squads
+
+Once installed, agents can be used in squad configurations:
+
+```yaml squads/blog-pipeline/squad.yaml
+name: Blog Content Pipeline
+
+agents:
+  - name: Content Strategist
+    agent: content-strategist  # References installed agent
+    
+  - name: SEO Specialist
+    agent: seo-specialist
+    
+  - name: Blog Writer
+    agent: blog-writer
+    
+  - name: Editor
+    agent: editor
+
+pipeline:
+  - agent: Content Strategist
+    task: |
+      Research trending topics in {industry} and create 
+      a 30-day content calendar for our blog
+    checkpoint: true
+    
+  - agent: SEO Specialist
+    task: |
+      For each topic, identify:
+      - Primary keyword (target: 1K-10K monthly searches)
+      - 3-5 related keywords
+      - Featured snippet opportunities
+    depends_on: [Content Strategist]
+    
+  - agent: Blog Writer
+    task: |
+      Write a 1500-word blog post on: {topic}
+      Include SEO keywords naturally
+      Add 3 subheadings, examples, and a CTA
+    depends_on: [SEO Specialist]
+    
+  - agent: Editor
+    task: |
+      Review for:
+      - Grammar and style
+      - Brand voice consistency
+      - Factual accuracy
+      - Readability (Flesch score 60+)
+    depends_on: [Blog Writer]
+    checkpoint: true
+    output: squads/blog-pipeline/output/
+```
+
+## Best Practice Files
+
+Agents include domain-specific best practices:
+
+```markdown agents/content-strategist/best-practices/content-planning.md
+# Content Planning Best Practices
+
+## 1. Start with Goals
+
+Define clear, measurable goals:
+- **Awareness:** Brand mentions, reach, impressions
+- **Engagement:** Comments, shares, time on page
+- **Conversion:** Leads, signups, sales
+
+## 2. Know Your Audience
+
+Create detailed audience personas:
+- Demographics (age, location, job title)
+- Pain points and challenges
+- Content preferences (format, length, tone)
+- Where they consume content (platforms, times)
+
+## 3. Content Mix
+
+Balance content types:
+- 40% Evergreen (timeless value)
+- 30% Trending (current events, news)
+- 20% Promotional (product, services)
+- 10% Experimental (new formats, ideas)
+
+## 4. Editorial Calendar
+
+Plan 30-90 days ahead:
+- Themes per week/month
+- Content formats per theme
+- Publishing schedule
+- Responsible team members
+- Success metrics
+
+## 5. Competitive Analysis
+
+Monitor competitors:
+- What topics perform well?
+- What formats do they use?
+- What gaps can you fill?
+- What can you do better?
+```
+
+These best practices are automatically included when the agent is invoked.
+
+## Agent Installation Process
+
+When you run `npx opensquad agents install <agent-name>`:
+
+1. **Fetches agent from registry** - Downloads from GitHub
+2. **Copies to agents/ directory** - Installs to `agents/<agent-name>/`
+3. **Validates structure** - Checks for agent.md and meta.json
+4. **Registers in configuration** - Updates `_opensquad/config/agents.yaml`
+5. **Downloads best practices** - Copies all referenced best practice files
+
+## Custom Agent Personas
+
+You can customize installed agents by editing their `agent.md` file:
+
+```bash
+# Edit the Content Strategist persona
+code agents/content-strategist/agent.md
+```
+
+Customizations persist across updates if you modify the `agent.md` directly.
+
+To create a completely custom agent:
+
+```bash
+mkdir -p agents/my-custom-agent
+
+cat > agents/my-custom-agent/agent.md << 'EOF'
+# My Custom Agent
+
+**Role:** Custom role
+**Expertise:** Custom expertise
+
+## Instructions
+
+You are...
+EOF
+
+cat > agents/my-custom-agent/meta.json << 'EOF'
+{
+  "id": "my-custom-agent",
+  "name": "My Custom Agent",
+  "icon": "🎯",
+  "category": "custom",
+  "version": "1.0.0",
+  "description": {
+    "en": "My custom agent description"
+  }
+}
+EOF
+```
+
+See the [Creating Custom Agents](/development/creating-agents) guide for details.
+
+## Agent Registry
+
+The OpenSquad agent registry is hosted at:
+
+**GitHub**: https://github.com/renatoasse/opensquad/tree/main/agents
+
+Browse available agents and their documentation there.
+
+## Troubleshooting
+
+### Agent Not Found
+
+```bash
+$ npx opensquad agents install nonexistent-agent
+
+  Installing nonexistent-agent...
+  ❌ Error: Agent 'nonexistent-agent' not found in registry
+```
+
+Check the [agent registry](https://github.com/renatoasse/opensquad/tree/main/agents) for available agents.
+
+### Agent Already Installed
+
+```bash
+$ npx opensquad agents install content-strategist
+
+  ⚠️  content-strategist is already installed. Reinstall? (y/n) 
+```
+
+Type `y` to reinstall (updates to latest version) or `n` to cancel.
+
+### Missing Best Practices
+
+If an agent references best practice files that don't exist:
+
+```
+⚠️  Warning: Agent 'content-strategist' references missing files:
+    - best-practices/content-planning.md
+    - best-practices/audience-research.md
+
+Re-run 'npx opensquad agents install content-strategist' to download them.
+```
+
+### Permission Errors
+
+```bash
+$ npx opensquad agents install content-strategist
+
+  ❌ Error: EACCES: permission denied, mkdir 'agents/content-strategist'
+```
+
+Ensure you have write permissions:
+
+```bash
+chmod u+w agents/
+```
+
+## Exit Codes
+
+<ResponseField name="0" type="exit code">
+  Command completed successfully
+</ResponseField>
+
+<ResponseField name="1" type="exit code">
+  Command failed (agent not found, permission denied, network error, etc.)
+</ResponseField>
+
+## Related Commands
+
+- [npx opensquad init](/api/cli-init) - Initialize OpenSquad
+- [npx opensquad skills](/api/cli-skills) - Manage skills
+- [npx opensquad create](/api/cli-create) - Create a squad using agents
+- [npx opensquad run](/api/cli-run) - Run a squad with agents

@@ -1,0 +1,539 @@
+---
+title: Virtual Office
+description: Real-time visual dashboard that shows agent activity, handoffs, and pipeline progress
+icon: building
+---
+
+The **Virtual Office** is a live dashboard that visualizes your squad's execution in real-time. Watch agents work at their desks, see handoffs animate between them, and track pipeline progress.
+
+## What is the Virtual Office?
+
+Inspired by Gather.town, the Virtual Office renders your squad as an isometric office space. Each agent has a desk, and you see their status change as the pipeline executes.
+
+<Info>
+The Virtual Office reads `state.json` files written by the Pipeline Runner. It updates instantly as agents work, deliver outputs, and complete tasks.
+</Info>
+
+## Dashboard Features
+
+### Office Scene
+
+From `OfficeScene.tsx:18-146`, the dashboard renders:
+
+<Steps>
+  <Step title="Agent Desks">
+    Each agent gets a desk positioned in a grid:
+    - **Column**: Left (1) or Right (2)
+    - **Row**: Sequential (1, 2, 3...)
+    - **Layout**: 2 columns, auto rows
+    
+    First agent: col 1, row 1. Second agent: col 2, row 1. Third agent: col 1, row 2.
+  </Step>
+  
+  <Step title="Agent Status Indicators">
+    Visual feedback for what each agent is doing:
+    - **Idle** (gray): Agent hasn't started yet
+    - **Working** (yellow pulsing): Agent is actively executing
+    - **Delivering** (blue): Agent finished, preparing handoff
+    - **Done** (green): Agent completed all work
+    - **Checkpoint** (purple): Waiting for user input
+  </Step>
+  
+  <Step title="Handoff Envelopes">
+    Animated envelopes that fly from one desk to another when work is handed off.
+    
+    Shows:
+    - From agent (icon)
+    - To agent (icon)
+    - Handoff message (one-sentence summary)
+    
+    Animation duration: 3 seconds (from `runner.pipeline.md:318-322`)
+  </Step>
+  
+  <Step title="Office Furniture">
+    Environmental details for visual appeal:
+    - Bookshelves on walls
+    - Whiteboard in center
+    - Clock on wall
+    - Plants in corners
+    - Filing cabinets
+    - Coffee machine (if room is tall enough)
+    
+    These don't affect functionality — pure aesthetics.
+  </Step>
+</Steps>
+
+### Status Bar
+
+From `StatusBar.tsx`, shows:
+
+- **Squad name and icon**
+- **Current step**: "Step 3 of 9: Create Content"
+- **Squad status**: Running / Completed / Checkpoint
+- **Elapsed time**: Updated every second
+- **Connection status**: WebSocket connected or disconnected
+
+### Squad Selector
+
+From `SquadSelector.tsx`:
+
+- Lists all squads with active `state.json` files
+- Shows squad icon, name, and current status
+- Click to switch between running squads
+- Grays out inactive squads
+
+## How It Works
+
+### State Synchronization
+
+From `useSquadSocket.ts` and `runner.pipeline.md:46-79`:
+
+<Steps>
+  <Step title="Pipeline Runner writes state.json">
+    Every time the pipeline changes (step starts, agent completes, handoff occurs), the Pipeline Runner writes:
+    
+    ```json
+    // squads/{name}/state.json
+    {
+      "squad": "content-carousel",
+      "status": "running",
+      "step": {
+        "current": 3,
+        "total": 9,
+        "label": "create-content"
+      },
+      "agents": [
+        {
+          "id": "researcher",
+          "name": "Rita Research",
+          "icon": "🔍",
+          "status": "done",
+          "deliverTo": null,
+          "desk": { "col": 1, "row": 1 }
+        },
+        {
+          "id": "writer",
+          "name": "Clara Copy",
+          "icon": "✍️",
+          "status": "working",
+          "deliverTo": null,
+          "desk": { "col": 2, "row": 1 }
+        },
+        {
+          "id": "reviewer",
+          "name": "Victor Verdict",
+          "icon": "✅",
+          "status": "idle",
+          "deliverTo": null,
+          "desk": { "col": 1, "row": 2 }
+        }
+      ],
+      "handoff": {
+        "from": "researcher",
+        "to": "writer",
+        "message": "Found 5 trending stories on AI coding agents",
+        "completedAt": "2026-03-13T14:32:15Z"
+      },
+      "startedAt": "2026-03-13T14:30:00Z",
+      "updatedAt": "2026-03-13T14:32:15Z"
+    }
+    ```
+  </Step>
+  
+  <Step title="WebSocket watches for changes">
+    The dashboard's WebSocket server (from `squadWatcher.ts`) watches the `squads/` directory for `state.json` file changes.
+    
+    When `state.json` is created/updated → broadcasts to all connected clients.
+    When `state.json` is deleted → broadcasts "squad inactive".
+  </Step>
+  
+  <Step title="React updates UI">
+    The dashboard receives the WebSocket message and updates:
+    - Agent desk statuses (idle → working → done)
+    - Handoff envelope animation (from → to)
+    - Progress bar (step 3 of 9)
+    - Elapsed time
+  </Step>
+</Steps>
+
+### Handoff Animation
+
+From `HandoffEnvelope.tsx:16-81`:
+
+1. **Pipeline Runner writes "delivering" state**:
+   ```json
+   {
+     "agents": [
+       { "id": "writer", "status": "delivering", "deliverTo": "reviewer" }
+     ],
+     "handoff": {
+       "from": "writer",
+       "to": "reviewer",
+       "message": "Created carousel with 6 slides",
+       "completedAt": "2026-03-13T14:35:20Z"
+     }
+   }
+   ```
+
+2. **Dashboard renders envelope**:
+   - Positioned at writer's desk
+   - Animated using GSAP to fly to reviewer's desk
+   - Shows writer icon → reviewer icon
+   - Duration: 3 seconds
+
+3. **Pipeline Runner writes "working" state**:
+   ```json
+   {
+     "agents": [
+       { "id": "writer", "status": "done", "deliverTo": null },
+       { "id": "reviewer", "status": "working", "deliverTo": null }
+     ],
+     "handoff": { /* preserved */ }
+   }
+   ```
+
+4. **Envelope fades out**, reviewer desk pulses yellow.
+
+## Agent Status Transitions
+
+From `state.ts:7-12` and pipeline execution:
+
+```
+idle → working → delivering → done
+  ↓
+checkpoint (when waiting for user)
+```
+
+### Status Meanings
+
+<AccordionGroup>
+  <Accordion title="idle" icon="circle">
+    Agent hasn't started yet. Gray desk, no activity.
+  </Accordion>
+  
+  <Accordion title="working" icon="spinner">
+    Agent is actively executing their step.
+    
+    - **Inline agents**: User sees their work in the conversation
+    - **Subagent agents**: Background task running (user sees "🔍 {Agent} is working...")
+    
+    Yellow pulsing animation on desk.
+  </Accordion>
+  
+  <Accordion title="delivering" icon="paper-plane">
+    Agent finished work, preparing to hand off to next agent.
+    
+    Envelope animation starts.
+    
+    Duration: 3 seconds (while envelope animates).
+  </Accordion>
+  
+  <Accordion title="done" icon="circle-check">
+    Agent completed all their work for this pipeline run.
+    
+    Green checkmark on desk.
+  </Accordion>
+  
+  <Accordion title="checkpoint" icon="hand">
+    Pipeline is paused at a checkpoint, waiting for user input.
+    
+    All agents show checkpoint status until user responds.
+  </Accordion>
+</AccordionGroup>
+
+## Desk Positioning
+
+From `runner.pipeline.md:50-57`:
+
+Desks are positioned in a 2-column grid:
+
+```
+Index 0 (Researcher):     col 1, row 1
+Index 1 (Writer):         col 2, row 1
+Index 2 (Reviewer):       col 1, row 2
+Index 3 (Designer):       col 2, row 2
+Index 4 (Publisher):      col 1, row 3
+...
+```
+
+**Formula**:
+- `col = (index % 2) + 1` (alternates 1, 2, 1, 2...)
+- `row = floor(index / 2) + 1` (increments every 2 agents)
+
+This creates a balanced layout that grows vertically as you add agents.
+
+## Office Visuals
+
+From `drawRoom.ts`, `drawFurniture.ts`, `drawDesk.ts`, and `palette.ts`:
+
+### Color Palette
+
+```typescript
+export const COLORS = {
+  floorBase: 0xD4A574,      // Warm wood
+  floorPlank: 0xC89968,     // Darker plank lines
+  wallFace: 0xF5F1E8,       // Cream wall
+  wallShadow: 0x8B7355,     // Dark baseboard
+  deskWood: 0xA0826D,       // Desk surface
+  deskLeg: 0x6B5D50,        // Desk legs
+  // ... (full palette in source)
+};
+```
+
+Designed to feel warm, professional, and calming.
+
+### Textures
+
+From `textures.ts:3-14`:
+
+- **Wood grain**: Subtle noise for desks and floors
+- **Fabric**: For plants and soft furniture
+- **Metal**: For filing cabinets and accents
+
+Applied using PixiJS graphics primitives (no external images).
+
+### Furniture Items
+
+<CardGroup cols={2}>
+  <Card title="Bookshelf" icon="book">
+    Tall vertical shelves on walls with book spines visible.
+    
+    Adds intellectual atmosphere.
+  </Card>
+  
+  <Card title="Whiteboard" icon="chalkboard">
+    Center wall element with frame and surface.
+    
+    Suggests collaboration and planning.
+  </Card>
+  
+  <Card title="Clock" icon="clock">
+    Wall-mounted clock showing current time.
+    
+    Reinforces real-time nature of dashboard.
+  </Card>
+  
+  <Card title="Plants" icon="leaf">
+    Potted plants in corners and beside desks.
+    
+    Adds life and warmth to the office.
+  </Card>
+  
+  <Card title="Coffee Machine" icon="mug-hot">
+    Side wall appliance (if room height allows).
+    
+    Playful touch for realism.
+  </Card>
+  
+  <Card title="Filing Cabinet" icon="file-zipper">
+    Multi-drawer storage unit.
+    
+    Suggests data and organization.
+  </Card>
+</CardGroup>
+
+## Running the Dashboard
+
+The Virtual Office is a separate Vite + React app:
+
+### Start the Dashboard
+
+```bash
+cd dashboard
+npm install
+npm run dev
+```
+
+Opens at `http://localhost:5173` by default.
+
+### WebSocket Server
+
+From `squadWatcher.ts:15-89`:
+
+The WebSocket server runs on port `3001` and:
+- Watches `squads/*/state.json` for changes
+- Broadcasts updates to all connected clients
+- Sends initial snapshot on connection (all squads + active states)
+- Cleans up when `state.json` is deleted
+
+### Connection Status
+
+From `useSquadSocket.ts:34-77`:
+
+- **Connected** (green dot): WebSocket active, receiving updates
+- **Disconnected** (red dot): WebSocket lost, dashboard stale
+
+Auto-reconnects on failure.
+
+## State Lifecycle
+
+From `runner.pipeline.md:334-349`:
+
+<Steps>
+  <Step title="Pipeline starts">
+    Create `state.json` with status: `idle`, all agents: `idle`, step: 0 of N.
+  </Step>
+  
+  <Step title="Pipeline runs">
+    Update `state.json` before every step:
+    - Current step number and label
+    - Agent statuses (working, delivering, done)
+    - Handoff objects
+  </Step>
+  
+  <Step title="Pipeline completes">
+    Update `state.json` with status: `completed`, all agents: `done`.
+  </Step>
+  
+  <Step title="10-second delay">
+    Let dashboard show completion state.
+  </Step>
+  
+  <Step title="Cleanup">
+    Delete `state.json`.
+    
+    Dashboard removes squad from active list.
+  </Step>
+</Steps>
+
+<Note>
+`state.json` is **temporary** — it only exists while the squad is running. Once deleted, the squad disappears from the dashboard.
+</Note>
+
+## Multiple Squads
+
+You can run multiple squads simultaneously:
+
+- Each squad has its own `state.json`
+- Dashboard shows all active squads in the Squad Selector
+- Click a squad to view its office
+- Each squad maintains independent state and animation
+
+### Example: 3 Squads Running
+
+```
+squads/
+├── content-carousel/
+│   └── state.json          # Running
+├── data-analysis/
+│   └── state.json          # Running
+├── email-campaign/
+│   └── state.json          # Running
+└── customer-support/
+    └── (no state.json)     # Inactive
+```
+
+Dashboard shows 3 squads in the selector. Click to switch between their offices.
+
+## Visual Design Philosophy
+
+From source code and design patterns:
+
+<Steps>
+  <Step title="Warm and Professional">
+    Color palette: woods, creams, soft greens.
+    
+    Avoids harsh blues or stark whites. Feels like a real office.
+  </Step>
+  
+  <Step title="Real-Time Feedback">
+    Instant updates when agents change status.
+    
+    No polling, no lag — WebSocket pushes changes immediately.
+  </Step>
+  
+  <Step title="Playful but Functional">
+    Animated envelopes and pulsing desks add personality.
+    
+    But status always clear — you know what's happening at a glance.
+  </Step>
+  
+  <Step title="Scalable Layout">
+    Grid grows vertically with more agents.
+    
+    Works for 2-agent squads or 10-agent squads.
+  </Step>
+</Steps>
+
+## Technical Stack
+
+From package.json and source files:
+
+- **React 18** with TypeScript
+- **Vite** for fast dev and build
+- **PixiJS** for canvas rendering
+- **@pixi/react** for React bindings
+- **GSAP** for animations (envelope flight)
+- **Zustand** for state management
+- **WebSocket** for real-time updates
+- **Chokidar** (server) for file watching
+
+## Best Practices
+
+<Steps>
+  <Step title="Keep dashboard open during execution">
+    The Visual Office gives you real-time feedback on pipeline progress.
+    
+    You'll see immediately if an agent gets stuck or a handoff occurs.
+  </Step>
+  
+  <Step title="Use handoff messages effectively">
+    From `runner.pipeline.md:314`, handoff messages are one-sentence summaries.
+    
+    Good: "Found 5 trending stories on AI coding agents"
+    
+    Bad: "Completed step 2"
+  </Step>
+  
+  <Step title="Monitor connection status">
+    If the WebSocket disconnects, the dashboard becomes stale.
+    
+    Check for the green dot (connected) in the status bar.
+  </Step>
+  
+  <Step title="Switch between squads">
+    If running multiple squads, use the Squad Selector to monitor each one.
+    
+    No need to close and reopen — just click.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Dashboard Not Updating
+
+1. **Check WebSocket connection**: Green dot in status bar?
+2. **Verify `state.json` exists**: `ls squads/{name}/state.json`
+3. **Restart dashboard**: `npm run dev` in dashboard directory
+
+### No Squads Showing
+
+1. **Check if any squads are running**: Look for `state.json` files in `squads/*/`
+2. **Run a squad**: `/opensquad run <name>`
+3. **Verify WebSocket server**: Should start automatically with dashboard
+
+### Handoff Animation Stuck
+
+1. **Check pipeline logs**: Handoff may have failed
+2. **Verify next agent exists**: Check `squad-party.csv`
+3. **Restart pipeline**: Stop and re-run the squad
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Squads" icon="users" href="/concepts/squads">
+    Learn how squads are structured and defined
+  </Card>
+  
+  <Card title="Pipelines" icon="diagram-project" href="/concepts/pipelines">
+    Understand how pipeline state drives the dashboard
+  </Card>
+  
+  <Card title="Create Your First Squad" icon="rocket" href="/quickstart">
+    Build a squad and watch it execute in the Virtual Office
+  </Card>
+  
+  <Card title="Deploy Dashboard" icon="cloud" href="/concepts/virtual-office">
+    Host the dashboard for team-wide monitoring
+  </Card>
+</CardGroup>

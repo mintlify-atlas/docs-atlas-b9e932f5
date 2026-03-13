@@ -1,0 +1,581 @@
+---
+title: Skills
+description: Integrations, scripts, and prompt libraries that extend agent capabilities
+icon: puzzle-piece
+---
+
+A **skill** is an integration that extends what agents can do. Skills can be MCP servers, custom scripts, or behavioral prompt libraries.
+
+## What are Skills?
+
+Think of skills as **tools in an agent's toolbox**. Just as a designer needs Figma and a developer needs a code editor, OpenSquad agents need skills to interact with external services, execute scripts, or follow specialized frameworks.
+
+<Info>
+Skills are **squad-scoped** — you declare which skills a squad needs in `squad.yaml`, and individual agents reference them in their definitions.
+</Info>
+
+## Skill Types
+
+From `skills.engine.md:5-10`:
+
+<CardGroup cols={2}>
+  <Card title="MCP" icon="plug">
+    **Model Context Protocol** server integration.
+    
+    Configured in `.claude/settings.local.json`. Provides tools the agent can call (e.g., `apify_scrape`, `instagram_publish`).
+    
+    **Examples**: Apify scraper, Playwright browser, Canva design API
+  </Card>
+  
+  <Card title="Script" icon="file-code">
+    Custom script that runs locally.
+    
+    Lives in the skill's `scripts/` directory. Can be Node.js, Python, or Bash.
+    
+    **Examples**: Image optimizer, CSV parser, SEO analyzer
+  </Card>
+  
+  <Card title="Hybrid" icon="arrows-split-up-and-left">
+    Both MCP and script components.
+    
+    MCP handles external API, script handles local processing.
+    
+    **Examples**: Social media publisher (MCP for API, script for image preprocessing)
+  </Card>
+  
+  <Card title="Prompt" icon="message-lines">
+    Behavioral instructions only — no external integration.
+    
+    Pure markdown guidance injected into agent context.
+    
+    **Examples**: Copywriting frameworks, SEO guidelines, review checklists
+  </Card>
+</CardGroup>
+
+## Installing Skills
+
+Skills can come from the **OpenSquad catalog** or be custom-built.
+
+### From the Catalog
+
+<Steps>
+  <Step title="Open the Skills menu">
+    ```bash
+    /opensquad skills
+    ```
+    Or use the Architect during squad creation (Phase 3.5 — Skill Discovery).
+  </Step>
+  
+  <Step title="Select Install">
+    The Skills Engine fetches the catalog from GitHub and shows available skills.
+  </Step>
+  
+  <Step title="Choose a skill">
+    The engine downloads the skill files and configures integrations automatically.
+  </Step>
+  
+  <Step title="Provide credentials">
+    If the skill requires API keys or environment variables, you'll be prompted to enter them.
+    
+    These are saved to `.env` and (for MCP skills) to `.claude/settings.local.json`.
+  </Step>
+</Steps>
+
+### Skill Detection
+
+From `skills.engine.md:20`:
+
+> A skill is installed if and only if `skills/<name>/SKILL.md` exists.
+> No binding files, no registry lookups — just check for the directory.
+
+This makes skills **portable** — copy the `skills/` directory to another project and they work immediately.
+
+## SKILL.md Format
+
+Every skill is defined by a single `SKILL.md` file (from `skills.engine.md:23-49`):
+
+```yaml
+---
+name: "Apify Web Scraper"
+description: >
+  Scrape structured data from any website using Apify actors.
+  Supports pagination, dynamic content, and data extraction.
+type: mcp
+version: "1.2.0"
+mcp:
+  server_name: apify
+  command: npx
+  args:
+    - "-y"
+    - "@apify/mcp-server-apify"
+  transport: stdio
+env:
+  - APIFY_TOKEN
+categories:
+  - scraping
+  - data
+---
+
+# Apify Web Scraper
+
+## Overview
+
+Use Apify to scrape structured data from websites, including:
+- Product catalogs (e-commerce)
+- Social media profiles (Instagram, LinkedIn)
+- News articles and blog posts
+- Business directories
+
+Apify handles pagination, JavaScript rendering, and anti-bot measures automatically.
+
+## Available Tools
+
+### apify_run_actor
+
+Runs an Apify actor with specified input.
+
+**Parameters**:
+- `actor_id` (string, required): Actor ID from Apify store (e.g., "apify/instagram-scraper")
+- `input` (object, required): Input configuration for the actor
+- `wait_for_finish` (boolean, optional): Wait for completion before returning (default: true)
+
+**Example**:
+```json
+{
+  "actor_id": "apify/instagram-scraper",
+  "input": {
+    "username": "example_user",
+    "resultsLimit": 10
+  },
+  "wait_for_finish": true
+}
+```
+
+**Returns**: Dataset with scraped posts, including captions, likes, comments, media URLs.
+
+## Best Practices
+
+1. **Start small**: Test with `resultsLimit: 5` before running large scrapes
+2. **Check actor documentation**: Each Apify actor has different input schemas
+3. **Handle rate limits**: Instagram scraper is limited by Apify's proxy pool
+4. **Parse results**: Apify returns JSON arrays — extract the fields you need
+
+## Common Actors
+
+- `apify/instagram-scraper`: Scrape Instagram profiles, posts, and hashtags
+- `apify/linkedin-profile-scraper`: Extract LinkedIn profiles and company data
+- `apify/web-scraper`: Generic web scraper with CSS/XPath selectors
+- `apify/google-search-scraper`: Scrape Google search results
+
+## Example Usage
+
+To scrape the 10 most recent Instagram posts from a user:
+
+1. Use the `apify_run_actor` tool
+2. Set `actor_id: "apify/instagram-scraper"`
+3. Configure input:
+   ```json
+   {
+     "username": "target_user",
+     "resultsLimit": 10
+   }
+   ```
+4. Parse the returned dataset to extract captions, engagement, and media URLs
+```
+
+### Frontmatter Fields
+
+<AccordionGroup>
+  <Accordion title="name, description, version" icon="tag">
+    Basic metadata:
+    - `name`: Display name for the skill
+    - `description`: What the skill does (can use YAML folded scalar `>` for multi-line)
+    - `version`: Semver version (e.g., `1.2.0`)
+  </Accordion>
+  
+  <Accordion title="type" icon="shapes">
+    Skill type: `mcp`, `script`, `hybrid`, or `prompt`
+  </Accordion>
+  
+  <Accordion title="mcp" icon="plug">
+    MCP server configuration (for `type: mcp` or `type: hybrid`):
+    - `server_name`: Key in `mcpServers` config
+    - `command`: Command to run (e.g., `npx`, `python`, `node`)
+    - `args`: Array of command arguments
+    - `transport`: `stdio` (default) or `http`
+    - `url`: (For HTTP transport) Server URL
+    - `headers`: (For HTTP transport) Map of header names to env var names for authentication
+  </Accordion>
+  
+  <Accordion title="script" icon="file-code">
+    Script configuration (for `type: script` or `type: hybrid`):
+    - `path`: Script path relative to skill directory (e.g., `scripts/optimize.js`)
+    - `runtime`: `node`, `python`, or `bash`
+    - `dependencies`: Array of npm/pip packages to install
+  </Accordion>
+  
+  <Accordion title="env" icon="key">
+    Array of required environment variable names (e.g., APIFY_TOKEN, INSTAGRAM_USERNAME).
+    
+    During installation, the Skills Engine prompts for these values and adds them to `.env`.
+  </Accordion>
+  
+  <Accordion title="categories" icon="tags">
+    Classification tags for skill discovery.
+    
+    Used by the Architect to suggest relevant skills during squad creation.
+    
+    Common categories: `scraping`, `data`, `design`, `social-media`, `analytics`, `automation`, `content`, `seo`
+  </Accordion>
+</AccordionGroup>
+
+### Markdown Body
+
+The body contains **agent instructions**:
+- Overview and use cases
+- Available tools/functions (for MCP)
+- Input/output schemas
+- Best practices and common patterns
+- Example usage
+
+This content is **injected into agent context** at runtime (see "How Skills Work" below).
+
+## How Skills Work
+
+### 1. Squad Declaration
+
+In `squad.yaml`, list the skills the squad needs:
+
+```yaml
+skills:
+  - web_search       # Native skill (always available)
+  - web_fetch        # Native skill (always available)
+  - apify            # Custom skill (must be installed)
+  - seo-guidelines   # Custom skill (must be installed)
+```
+
+### 2. Agent Declaration
+
+In an agent's `.agent.md` frontmatter, specify which skills that agent uses:
+
+```yaml
+---
+id: "squads/content-carousel/agents/researcher"
+name: "Rita Research"
+skills:
+  - web_search
+  - apify
+---
+```
+
+### 3. Skill Resolution (Pipeline Start)
+
+From `runner.pipeline.md:17-23` and `skills.engine.md:236-273`:
+
+Before the pipeline runs, the Pipeline Runner:
+1. Reads the squad's `skills:` list from `squad.yaml`
+2. For each non-native skill, checks if `skills/{skill}/SKILL.md` exists
+3. If missing → prompts user to install or stop pipeline
+4. If present → parses SKILL.md frontmatter to get type and config
+5. For MCP skills, verifies `.claude/settings.local.json` has the server configured
+6. For script skills, verifies the script file exists
+
+All skills must resolve successfully before the pipeline starts (**fail fast**).
+
+### 4. Instruction Injection (Step Execution)
+
+From `runner.pipeline.md:109-120` and `skills.engine.md:276-314`:
+
+When a step executes, the Pipeline Runner:
+1. Reads the agent's `.agent.md` (persona, principles, operational framework)
+2. For each skill in the agent's `skills:` array:
+   - Reads `skills/{skill}/SKILL.md`
+   - Extracts the markdown body (everything after frontmatter)
+   - Appends to agent context:
+     ```
+     [Agent definition]
+     
+     --- SKILL INSTRUCTIONS ---
+     
+     ## Apify Web Scraper
+     [Full SKILL.md body with tools, examples, best practices]
+     ```
+
+This gives the agent **runtime access** to skill documentation and tool schemas.
+
+### 5. Tool Usage (Agent Execution)
+
+The agent now has:
+- Native tools: `web_search`, `web_fetch` (always available)
+- MCP tools: `apify_run_actor`, etc. (from configured MCP servers)
+- Script tools: Via Bash (e.g., `node scripts/optimize.js input.png output.png`)
+
+The agent decides when and how to use each tool based on the task.
+
+## Native Skills
+
+OpenSquad includes two **native skills** that are always available:
+
+<CardGroup cols={2}>
+  <Card title="web_search" icon="magnifying-glass">
+    Search the web for information.
+    
+    Uses the browser's native search capability. Returns titles, snippets, and URLs.
+    
+    **Use for**: Finding recent news, researching topics, discovering sources
+  </Card>
+  
+  <Card title="web_fetch" icon="globe">
+    Fetch and read web pages.
+    
+    Downloads HTML, extracts readable content, handles JavaScript rendering.
+    
+    **Use for**: Reading articles, extracting data from URLs, following links from search results
+  </Card>
+</CardGroup>
+
+You don't need to install these — just declare them in `squad.yaml` and `agent.yaml`.
+
+## Skill Discovery (During Squad Creation)
+
+From `architect.agent.yaml:396-415` and `skills.engine.md:317-381`:
+
+During **Phase 3.5** of squad creation, the Architect:
+
+1. **Lists installed skills** and **fetches the catalog** from GitHub
+2. **Analyzes squad requirements** based on discovery answers:
+   - What platforms does it interact with?
+   - What data sources does it need?
+   - What output formats does it produce?
+3. **Matches skill categories** against squad needs:
+   - Research/data squads → `scraping`, `data`, `analytics`
+   - Content squads → `design`, `social-media`
+   - Communication squads → `messaging`, `notification`
+4. **Only suggests skills when native skills are insufficient**:
+   - `web_search` and `web_fetch` cover basic web research
+   - Suggest additional skills only for: structured data extraction, specific APIs, local scripts, specialized frameworks
+5. **Presents recommendations** as a numbered list — user can accept or skip
+
+This ensures squads only get skills they actually need.
+
+## Creating Custom Skills
+
+You can create custom skills using the **opensquad-skill-creator**:
+
+<Steps>
+  <Step title="Install the Skill Creator">
+    ```bash
+    /opensquad skills
+    ```
+    Select "Install" → "opensquad-skill-creator"
+  </Step>
+  
+  <Step title="Create a new skill">
+    ```bash
+    /opensquad skills
+    ```
+    Select "Create Custom Skill"
+  </Step>
+  
+  <Step title="Follow the prompts">
+    The Skill Creator guides you through:
+    - Skill name and description
+    - Type (MCP, script, hybrid, or prompt)
+    - Configuration (command, args, env vars)
+    - Instruction body (tools, examples, best practices)
+  </Step>
+  
+  <Step title="Test the skill">
+    Add it to a test squad and verify it works as expected.
+  </Step>
+</Steps>
+
+### Custom Skill Examples
+
+**Script Skill**: Image optimizer
+```yaml
+---
+name: "Image Optimizer"
+description: "Resize and compress images for social media"
+type: script
+version: "0.1.0"
+script:
+  path: scripts/optimize.js
+  runtime: node
+  dependencies:
+    - sharp
+categories:
+  - design
+  - automation
+---
+
+# Image Optimizer
+
+Use this skill to resize and compress images for Instagram, LinkedIn, and other platforms.
+
+## Usage
+
+```bash
+node skills/image-optimizer/scripts/optimize.js <input> <output> <platform>
+```
+
+**Parameters**:
+- `input`: Path to source image
+- `output`: Path to save optimized image
+- `platform`: Target platform (instagram-feed, instagram-story, linkedin-post)
+
+**Example**:
+```bash
+node skills/image-optimizer/scripts/optimize.js raw.png output/slide-1.png instagram-feed
+```
+
+**Output**: Compressed image at optimal dimensions for the platform.
+```
+
+**Prompt Skill**: SEO guidelines
+```yaml
+---
+name: "SEO Guidelines"
+description: "Best practices for SEO-optimized content"
+type: prompt
+version: "1.0.0"
+categories:
+  - content
+  - seo
+---
+
+# SEO Guidelines
+
+## Keyword Usage
+
+1. **Title tag**: Include primary keyword in the first 60 characters
+2. **Meta description**: Include primary + secondary keyword, 150-160 characters
+3. **H1**: Use primary keyword naturally, only one H1 per page
+4. **Body**: Use primary keyword 3-5 times per 1000 words, secondary keywords 2-3 times
+5. **URL slug**: Include primary keyword, use hyphens, keep under 60 characters
+
+## Content Structure
+
+- **Introduction**: Hook + keyword mention in first 100 words
+- **Subheadings (H2/H3)**: Use question keywords ("How to...", "What is...")
+- **Lists and tables**: Google favors structured data for featured snippets
+- **Internal links**: Link to 3-5 related pages with descriptive anchor text
+- **External links**: Link to 1-2 authoritative sources
+
+## Technical SEO
+
+- **Image alt text**: Describe the image, include keyword if natural
+- **Page speed**: Optimize images, minify CSS/JS, use CDN
+- **Mobile-friendly**: Responsive design, readable fonts, tappable buttons
+- **Schema markup**: Use Article or HowTo schema for blog posts
+
+## Anti-Patterns
+
+- ❌ Keyword stuffing (using keyword unnaturally or excessively)
+- ❌ Thin content (under 300 words)
+- ❌ Duplicate content (copying from other pages)
+- ❌ Broken links (internal or external)
+```
+
+## Managing Skills
+
+### List Installed Skills
+
+```bash
+/opensquad skills
+```
+
+Select "List Installed" to see:
+- Skill name and version
+- Type (MCP, script, hybrid, prompt)
+- Categories
+- Environment variables (✅ configured or ⚠️ missing)
+
+### Remove a Skill
+
+```bash
+/opensquad skills
+```
+
+Select "Remove" → choose the skill → confirm
+
+The Skills Engine:
+1. Checks which squads use the skill (warns you)
+2. Deletes the `skills/{name}/` directory
+3. Removes MCP configuration from `.claude/settings.local.json` (for MCP skills)
+4. Does NOT remove references from `squad.yaml` (you may reinstall later)
+
+<Warning>
+If squads depend on a removed skill, they will fail at pipeline start until the skill is reinstalled.
+</Warning>
+
+## Best Practices
+
+<Steps>
+  <Step title="Start with native skills">
+    `web_search` and `web_fetch` cover most research needs. Only add custom skills when you need:
+    - Structured data extraction (scraping)
+    - Specific API integrations (social media, design tools)
+    - Local processing (image optimization, data transformation)
+  </Step>
+  
+  <Step title="Declare skills at squad level">
+    List all skills in `squad.yaml`. Individual agents reference the subset they need.
+    
+    This makes squad dependencies explicit and ensures skills are resolved before pipeline start.
+  </Step>
+  
+  <Step title="Document tool usage in skill instructions">
+    The SKILL.md body is injected into agent context. Include:
+    - Tool schemas (parameters, return types)
+    - Usage examples with realistic inputs
+    - Common patterns and best practices
+    - Anti-patterns and error handling
+  </Step>
+  
+  <Step title="Use categories for discovery">
+    Tag skills with accurate categories so the Architect can suggest them during squad creation.
+    
+    Good categories: `scraping`, `data`, `design`, `social-media`, `analytics`, `automation`, `content`, `seo`
+  </Step>
+  
+  <Step title="Version your skills">
+    Use semver (`1.2.0`). Increment when:
+    - Major: Breaking changes to tool schemas or script APIs
+    - Minor: New tools or features
+    - Patch: Bug fixes or documentation updates
+  </Step>
+</Steps>
+
+## Skill Catalog
+
+The OpenSquad catalog includes skills for:
+
+- **Scraping**: Apify, Playwright browser automation
+- **Design**: Canva API, image optimization scripts
+- **Social Media**: Instagram, LinkedIn, Twitter publishers
+- **Analytics**: Google Analytics, data visualization
+- **Content**: Copywriting frameworks, SEO guidelines
+- **Automation**: Workflow triggers, notification services
+
+Browse the catalog at: `https://github.com/renatoasse/opensquad/tree/main/skills`
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Squads" icon="users" href="/concepts/squads">
+    Learn how skills are declared in squad definitions
+  </Card>
+  
+  <Card title="Agents" icon="robot" href="/concepts/agents">
+    See how agents use skills in their work
+  </Card>
+  
+  <Card title="Pipelines" icon="diagram-project" href="/concepts/pipelines">
+    Understand how skills are resolved before pipeline execution
+  </Card>
+  
+  <Card title="Create Custom Skills" icon="wrench" href="/development/creating-skills">
+    Build your own integrations and prompt libraries
+  </Card>
+</CardGroup>

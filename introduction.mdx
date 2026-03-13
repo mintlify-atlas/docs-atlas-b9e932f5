@@ -1,0 +1,115 @@
+---
+title: Introduction
+description: Multi-agent orchestration framework that creates AI squads working together automatically
+---
+
+# Welcome to OpenSquad
+
+OpenSquad is a multi-agent orchestration framework that lets you create teams of AI agents that work together automatically — right from your IDE.
+
+Describe what you need in plain language, and OpenSquad creates a specialized squad of agents that collaborate on complex tasks through automated pipelines.
+
+## What is a Squad?
+
+A squad is a team of AI agents that collaborate on a task. Each agent has a specific role and expertise. They execute in a pipeline — you only step in at decision checkpoints.
+
+**Example squad workflow:**
+
+- **Researcher** gathers information and industry trends
+- **Strategist** generates ideas and defines the approach
+- **Writer** produces the final content
+- **Designer** creates visuals for social media
+- **Reviewer** ensures quality before delivery
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Natural Language Squad Creation" icon="wand-magic-sparkles">
+    Describe your needs and the Architect agent designs the perfect team automatically
+  </Card>
+  <Card title="Multi-Agent Orchestration" icon="users">
+    Specialized agents with distinct roles work together through automated pipelines
+  </Card>
+  <Card title="Plugin System" icon="puzzle-piece">
+    Installable skills extend agent capabilities with integrations and tools
+  </Card>
+  <Card title="Visual Dashboard" icon="desktop">
+    Virtual Office shows your agents working in real-time with a 2D interface
+  </Card>
+  <Card title="IDE Integration" icon="code">
+    Works seamlessly with Claude Code, Cursor, VS Code, and other popular IDEs
+  </Card>
+  <Card title="Checkpoints & Control" icon="circle-pause">
+    Pipeline pauses at decision points where your input is needed
+  </Card>
+</CardGroup>
+
+## How It Works
+
+<Steps>
+  <Step title="Initialize OpenSquad">
+    Run `npx opensquad init` in your project to set up the framework
+  </Step>
+  <Step title="Create a Squad">
+    Use `/opensquad create` to describe your task. The Architect agent designs the optimal team
+  </Step>
+  <Step title="Approve the Design">
+    Review the squad structure, agent roles, and pipeline before execution
+  </Step>
+  <Step title="Run Your Squad">
+    Execute with `/opensquad run <name>`. Agents work automatically with checkpoints for your decisions
+  </Step>
+</Steps>
+
+## Example Use Cases
+
+OpenSquad can orchestrate agents for a wide variety of tasks:
+
+- **Content Creation**: Generate Instagram carousels from trending news, create images, and publish automatically
+- **Product Launches**: Produce complete launch materials including sales pages, email sequences, and promotional content
+- **Documentation**: Write tutorials with screenshots for employee training or customer onboarding
+- **Video Processing**: Extract viral clips from long-form YouTube videos with AI editing
+- **Data Analysis**: Research trends, analyze data sets, and generate insights with visualizations
+
+## Quick Example
+
+```bash
+# Initialize OpenSquad
+npx opensquad init
+
+# Create a squad that writes LinkedIn posts
+/opensquad create "Squad that writes LinkedIn posts about AI trends"
+
+# Run the squad
+/opensquad run linkedin-ai-posts
+```
+
+The Architect asks a few questions, designs the squad with appropriate agents (researcher, writer, reviewer), and sets up an automated pipeline. You approve the design, then the squad executes automatically.
+
+## Supported IDEs
+
+| IDE | Status |
+|-----|--------|
+| Antigravity | Available |
+| Claude Code | Available |
+| Codex (OpenAI) | Available |
+| Open Code | Available |
+| Cursor | Available |
+| VS Code + Copilot | Available |
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install OpenSquad and set up your environment
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create and run your first squad in minutes
+  </Card>
+  <Card title="Core Concepts" icon="book" href="/concepts/squads">
+    Learn about squads, agents, skills, and pipelines
+  </Card>
+  <Card title="Examples" icon="lightbulb" href="/squads/examples">
+    Explore real-world squad configurations
+  </Card>
+</CardGroup>

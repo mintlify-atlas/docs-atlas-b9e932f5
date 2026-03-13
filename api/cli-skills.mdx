@@ -1,0 +1,433 @@
+---
+title: 'Skills Management'
+description: 'Install, update, and manage OpenSquad skills'
+icon: 'puzzle-piece'
+---
+
+## Overview
+
+Skills are integrations, scripts, and capabilities that agents can use during squad execution. OpenSquad provides commands to install, update, remove, and list skills from the central registry.
+
+## Commands
+
+### List Skills
+
+```bash
+npx opensquad skills
+# or
+npx opensquad skills list
+```
+
+Displays all installed skills with descriptions.
+
+**Output:**
+
+```bash
+$ npx opensquad skills
+
+  Opensquad Skills
+
+  Installed:
+    web-search (mcp) - Search the web using Brave Search API
+    image-generator (mcp) - Generate images using DALL-E
+    calculator (tool) - Perform mathematical calculations
+    python-runner (tool) - Execute Python scripts
+    opensquad (skill) - Main OpenSquad orchestration skill
+
+  Browse available skills at: https://github.com/renatoasse/opensquad/tree/main/skills
+```
+
+### Install a Skill
+
+```bash
+npx opensquad install <skill-name>
+```
+
+Installs a skill from the OpenSquad registry.
+
+**Example:**
+
+```bash
+$ npx opensquad install web-search
+
+  Installing web-search...
+  ✅ Installed: web-search
+```
+
+<ParamField path="skill-name" type="string" required>
+  The identifier of the skill to install (e.g., `web-search`, `image-generator`)
+</ParamField>
+
+### Uninstall a Skill
+
+```bash
+npx opensquad uninstall <skill-name>
+```
+
+Removes an installed skill from your project.
+
+**Example:**
+
+```bash
+$ npx opensquad uninstall web-search
+
+  Removing web-search...
+  ✅ Removed: web-search
+```
+
+<ParamField path="skill-name" type="string" required>
+  The identifier of the skill to remove
+</ParamField>
+
+### Update a Specific Skill
+
+```bash
+npx opensquad update <skill-name>
+```
+
+Updates a single skill to the latest version from the registry.
+
+**Example:**
+
+```bash
+$ npx opensquad update web-search
+
+  Installing web-search...
+  ✅ Installed: web-search
+```
+
+<ParamField path="skill-name" type="string" required>
+  The identifier of the skill to update
+</ParamField>
+
+### Update All Skills
+
+```bash
+npx opensquad skills update
+```
+
+Updates all installed skills to their latest versions.
+
+**Example:**
+
+```bash
+$ npx opensquad skills update
+
+  Updating all installed skills...
+  Installing web-search...
+  ✅ Installed: web-search
+  Installing image-generator...
+  ✅ Installed: image-generator
+  Installing calculator...
+  ✅ Installed: calculator
+
+  ✅ Updated 3 skill(s).
+```
+
+## Skill Types
+
+OpenSquad supports three types of skills:
+
+### MCP Skills
+
+**Model Context Protocol** skills are server-based integrations that provide external capabilities:
+
+- `web-search` - Brave Search API integration
+- `image-generator` - DALL-E image generation
+- `browser-automation` - Playwright browser control
+
+MCP skills are configured in `.mcp.json` and run as background servers.
+
+### Tool Skills
+
+Built-in tools that agents can invoke directly:
+
+- `calculator` - Mathematical calculations
+- `python-runner` - Execute Python code
+- `file-operations` - Read/write files
+
+### Hybrid Skills
+
+Skills that combine both MCP servers and custom tooling:
+
+- `opensquad` - Core orchestration (MCP) + utility functions (tools)
+- `social-media-publisher` - API integration (MCP) + scheduling (tools)
+
+## Skill Structure
+
+Each skill is installed to `skills/<skill-name>/` with this structure:
+
+```
+skills/web-search/
+├── SKILL.md          # Skill documentation and usage
+├── meta.json         # Skill metadata
+├── server.js         # MCP server (if applicable)
+└── tools/            # Tool implementations (if applicable)
+    └── search.js
+```
+
+### SKILL.md
+
+Defines the skill's capabilities and usage instructions:
+
+```markdown skills/web-search/SKILL.md
+# Web Search Skill
+
+**Type:** MCP  
+**Description:** Search the web using Brave Search API
+
+## Usage
+
+Agents can invoke web search like this:
+
+```yaml
+agents:
+  - name: Researcher
+    tools:
+      - web-search
+
+pipeline:
+  - agent: Researcher
+    task: |
+      Search for "AI agent frameworks" and summarize top 5 results
+```
+
+## Configuration
+
+Requires `BRAVE_API_KEY` environment variable.
+
+## Functions
+
+- `search(query: string, count?: number)` - Search the web
+- `searchNews(query: string)` - Search news articles
+- `searchImages(query: string)` - Search for images
+```
+
+### meta.json
+
+Provides skill metadata:
+
+```json skills/web-search/meta.json
+{
+  "id": "web-search",
+  "name": "Web Search",
+  "type": "mcp",
+  "version": "1.2.0",
+  "description": {
+    "en": "Search the web using Brave Search API",
+    "pt-BR": "Pesquise na web usando a API do Brave Search",
+    "es": "Busca en la web usando la API de Brave Search"
+  },
+  "env": ["BRAVE_API_KEY"],
+  "dependencies": [
+    "@modelcontextprotocol/sdk"
+  ]
+}
+```
+
+## Skill Installation Process
+
+When you run `npx opensquad install <skill-name>`:
+
+1. **Fetches skill from registry** - Downloads from GitHub or npm
+2. **Copies to skills/ directory** - Installs to `skills/<skill-name>/`
+3. **Checks environment variables** - Warns if required env vars are missing
+4. **Updates .mcp.json** (if MCP skill) - Registers the MCP server
+5. **Installs dependencies** - Runs `npm install` if needed
+6. **Validates installation** - Verifies SKILL.md and meta.json exist
+
+## Environment Variables
+
+Some skills require API keys or configuration:
+
+```bash
+# .env
+BRAVE_API_KEY=your_api_key_here
+OPENAI_API_KEY=your_openai_key
+ANTHROPIC_API_KEY=your_anthropic_key
+```
+
+When installing a skill that requires env vars:
+
+```bash
+$ npx opensquad install web-search
+
+  Installing web-search...
+  ⚠️  Requires environment variables:
+      - BRAVE_API_KEY
+  
+  Add these to your .env file before using this skill.
+  
+  ✅ Installed: web-search
+```
+
+## MCP Configuration
+
+MCP skills are registered in `.mcp.json`:
+
+```json .mcp.json
+{
+  "mcpServers": {
+    "brave-search": {
+      "command": "node",
+      "args": ["skills/web-search/server.js"],
+      "env": {
+        "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+      }
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "env": {
+        "PLAYWRIGHT_PROFILE_DIR": "./_opensquad/_browser_profile"
+      }
+    }
+  }
+}
+```
+
+## Common Skills
+
+### Core Skills (Auto-installed)
+
+<ResponseField name="opensquad" type="skill">
+  Main orchestration skill - provides `/opensquad` commands in your IDE
+</ResponseField>
+
+<ResponseField name="web-search" type="skill">
+  Search the web using Brave Search API (requires `BRAVE_API_KEY`)
+</ResponseField>
+
+<ResponseField name="browser-automation" type="skill">
+  Control Playwright browser for web scraping and testing
+</ResponseField>
+
+### Optional Skills
+
+<ResponseField name="image-generator" type="skill">
+  Generate images with DALL-E (requires `OPENAI_API_KEY`)
+</ResponseField>
+
+<ResponseField name="code-executor" type="skill">
+  Execute code in multiple languages safely
+</ResponseField>
+
+<ResponseField name="database-query" type="skill">
+  Query SQL databases (requires database credentials)
+</ResponseField>
+
+<ResponseField name="email-sender" type="skill">
+  Send emails via SMTP (requires SMTP configuration)
+</ResponseField>
+
+<ResponseField name="social-media-publisher" type="skill">
+  Publish content to Instagram, Twitter, LinkedIn (requires API keys)
+</ResponseField>
+
+## Creating Custom Skills
+
+You can create your own skills:
+
+```bash
+# Create skill directory
+mkdir -p skills/my-skill
+
+# Create meta.json
+cat > skills/my-skill/meta.json << 'EOF'
+{
+  "id": "my-skill",
+  "name": "My Custom Skill",
+  "type": "tool",
+  "version": "1.0.0",
+  "description": {
+    "en": "My custom skill description"
+  }
+}
+EOF
+
+# Create SKILL.md
+cat > skills/my-skill/SKILL.md << 'EOF'
+# My Custom Skill
+
+**Type:** Tool
+**Description:** Does something useful
+
+## Usage
+
+Agents can use this skill to...
+EOF
+```
+
+See the [Creating Custom Skills](/development/creating-skills) guide for details.
+
+## Skill Registry
+
+The OpenSquad skill registry is hosted at:
+
+**GitHub**: https://github.com/renatoasse/opensquad/tree/main/skills
+
+Browse available skills and their documentation there.
+
+## Troubleshooting
+
+### Skill Not Found
+
+```bash
+$ npx opensquad install nonexistent-skill
+
+  Installing nonexistent-skill...
+  ❌ Error: Skill 'nonexistent-skill' not found in registry
+```
+
+Check the [skill registry](https://github.com/renatoasse/opensquad/tree/main/skills) for available skills.
+
+### Skill Already Installed
+
+```bash
+$ npx opensquad install web-search
+
+  ⚠️  web-search is already installed. Reinstall? (y/n) 
+```
+
+Type `y` to reinstall (updates to latest version) or `n` to cancel.
+
+### Missing Environment Variables
+
+If you try to use a skill without required env vars:
+
+```
+❌ Error: web-search requires BRAVE_API_KEY
+
+Add to your .env file:
+BRAVE_API_KEY=your_api_key_here
+```
+
+### Permission Errors
+
+```bash
+$ npx opensquad install web-search
+
+  ❌ Error: EACCES: permission denied, mkdir 'skills/web-search'
+```
+
+Ensure you have write permissions:
+
+```bash
+chmod u+w skills/
+```
+
+## Exit Codes
+
+<ResponseField name="0" type="exit code">
+  Command completed successfully
+</ResponseField>
+
+<ResponseField name="1" type="exit code">
+  Command failed (skill not found, permission denied, network error, etc.)
+</ResponseField>
+
+## Related Commands
+
+- [npx opensquad init](/api/cli-init) - Initialize OpenSquad
+- [npx opensquad update](/api/cli-init) - Update OpenSquad core
+- [npx opensquad agents](/api/cli-agents) - Manage agents

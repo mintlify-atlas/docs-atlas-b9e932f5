@@ -1,0 +1,762 @@
+---
+title: "Creating Custom Skills"
+description: "Build custom skills to extend agent capabilities with external tools, APIs, and scripts"
+icon: "puzzle-piece"
+---
+
+# Creating Custom Skills
+
+Skills extend agent capabilities by integrating external tools, APIs, scripts, or prompt templates. OpenSquad supports four types of skills: MCP server integrations, custom scripts, hybrid skills, and prompt-based behavioral guidelines.
+
+## Skill Types
+
+<ResponseField name="mcp" type="type">
+  **MCP Server Integration** - Connects to Model Context Protocol servers for tool access (e.g., Apify, Canva, Playwright)
+</ResponseField>
+
+<ResponseField name="script" type="type">
+  **Custom Script** - Runs local scripts in Node.js, Python, or Bash
+</ResponseField>
+
+<ResponseField name="hybrid" type="type">
+  **Hybrid** - Combines both MCP server and custom script components
+</ResponseField>
+
+<ResponseField name="prompt" type="type">
+  **Prompt Template** - Behavioral instructions only, no external integrations
+</ResponseField>
+
+## SKILL.md Format
+
+Every skill is defined by a single `SKILL.md` file that combines YAML frontmatter (metadata) with Markdown body (agent instructions).
+
+### Basic Structure
+
+```markdown
+---
+name: skill-name
+description: >
+  What this skill does and when to use it.
+  Can span multiple lines.
+type: mcp # or script, hybrid, prompt
+version: "1.0.0"
+env:
+  - API_KEY_NAME
+  - OTHER_REQUIRED_VAR
+categories: [scraping, data, automation]
+---
+
+# Skill Name
+
+## When to use
+
+Describe the scenarios where agents should use this skill.
+
+## Instructions
+
+Detailed instructions for agents on how to use this skill effectively.
+
+### Key capabilities
+- Capability 1
+- Capability 2
+
+### Best practices
+- Practice 1
+- Practice 2
+
+## Available operations
+
+- **Operation 1** - What it does
+- **Operation 2** - What it does
+```
+
+## Frontmatter Fields
+
+### Core Metadata
+
+<ParamField path="name" type="string" required>
+  Unique identifier for the skill (lowercase, hyphen-separated)
+</ParamField>
+
+<ParamField path="description" type="string" required>
+  Clear description of what the skill does. Use YAML folded scalar (`>`) for multi-line descriptions.
+</ParamField>
+
+<ParamField path="type" type="enum" required>
+  Skill type: `mcp`, `script`, `hybrid`, or `prompt`
+</ParamField>
+
+<ParamField path="version" type="string" required>
+  Semantic version (e.g., `"1.0.0"`)
+</ParamField>
+
+<ParamField path="categories" type="array">
+  Classification tags for skill discovery (e.g., `["scraping", "data", "automation"]`)
+</ParamField>
+
+### Localized Descriptions
+
+<ParamField path="description_pt-BR" type="string">
+  Portuguese (Brazil) description - follows same format as `description`
+</ParamField>
+
+<ParamField path="description_es" type="string">
+  Spanish description - follows same format as `description`
+</ParamField>
+
+### Environment Variables
+
+<ParamField path="env" type="array">
+  List of required environment variable names. OpenSquad prompts users to configure these during skill installation.
+</ParamField>
+
+```yaml
+env:
+  - APIFY_TOKEN
+  - APIFY_DATASET_ID
+```
+
+### MCP Configuration
+
+For `mcp` and `hybrid` type skills:
+
+<ParamField path="mcp" type="object">
+  MCP server configuration object
+</ParamField>
+
+<ParamField path="mcp.server_name" type="string" required>
+  Key name for the MCP server in `.claude/settings.local.json`
+</ParamField>
+
+<ParamField path="mcp.command" type="string" required>
+  Command to execute (e.g., `"npx"`, `"python"`, `"node"`)
+</ParamField>
+
+<ParamField path="mcp.args" type="array" required>
+  Array of command arguments
+</ParamField>
+
+<ParamField path="mcp.transport" type="enum" default="stdio">
+  Communication protocol: `"stdio"` or `"http"`
+</ParamField>
+
+<ParamField path="mcp.url" type="string">
+  Required for HTTP transport - the server endpoint URL
+</ParamField>
+
+<ParamField path="mcp.headers" type="object">
+  Optional HTTP headers for authentication (maps header names to env var names)
+</ParamField>
+
+#### MCP Examples
+
+<CodeGroup>
+```yaml stdio Transport (npx)
+mcp:
+  server_name: apify
+  command: npx
+  args: ["-y", "@apify/actors-mcp-server@latest"]
+  transport: stdio
+```
+
+```yaml HTTP Transport with Auth
+mcp:
+  server_name: custom-api
+  transport: http
+  url: "https://api.example.com/mcp"
+  headers:
+    Authorization: API_TOKEN_ENV_VAR
+```
+
+```yaml stdio with Local Script
+mcp:
+  server_name: custom-tool
+  command: node
+  args: ["./skills/custom-tool/server.js"]
+  transport: stdio
+```
+</CodeGroup>
+
+### Script Configuration
+
+For `script` and `hybrid` type skills:
+
+<ParamField path="script" type="object">
+  Script execution configuration
+</ParamField>
+
+<ParamField path="script.path" type="string" required>
+  Path to script file relative to skill directory (e.g., `"scripts/process.js"`)
+</ParamField>
+
+<ParamField path="script.runtime" type="enum" required>
+  Script runtime: `"node"`, `"python"`, or `"bash"`
+</ParamField>
+
+<ParamField path="script.dependencies" type="array">
+  List of package dependencies to install (npm for node, pip for python)
+</ParamField>
+
+```yaml
+script:
+  path: "scripts/image-optimizer.js"
+  runtime: node
+  dependencies:
+    - sharp
+    - imagemin
+```
+
+## Complete Skill Examples
+
+### MCP Skill: Apify Web Scraper
+
+<Expandable title="View Complete SKILL.md">
+```markdown
+---
+name: apify
+description: >
+  Web scraping and automation platform. Extract data from any website,
+  run pre-built scrapers (Actors), and automate web workflows using
+  thousands of ready-made tools from the Apify Store.
+description_pt-BR: >
+  Plataforma de web scraping e automação. Extraia dados de qualquer site,
+  execute scrapers prontos (Actors) e automatize fluxos de trabalho web
+  com milhares de ferramentas da Apify Store.
+type: mcp
+version: "1.0.0"
+mcp:
+  server_name: apify
+  command: npx
+  args: ["-y", "@apify/actors-mcp-server@latest"]
+env:
+  - APIFY_TOKEN
+categories: [scraping, data, automation]
+---
+
+# Apify Web Scraper
+
+## When to use
+
+Use Apify when you need to extract data from websites, scrape social media
+profiles, run search engine queries, or automate web data collection workflows.
+Apify provides thousands of pre-built scrapers (called Actors) that handle
+common scraping tasks out of the box.
+
+## Instructions
+
+You have access to Apify tools for web scraping and data extraction.
+
+### Key capabilities
+
+- Use Apify Actors (pre-built scrapers) to extract data from websites
+- Popular Actors: web-scraper, instagram-scraper, google-search-scraper,
+  youtube-scraper, twitter-scraper, tiktok-scraper
+- Each Actor has its own input schema -- check documentation before running
+
+### Best practices
+
+- Start with the simplest Actor that meets the need
+- Use `maxItems` to limit results and avoid excessive costs
+- Check Actor pricing before running (some have per-result costs)
+- Parse results and extract only the fields you need
+
+## Available operations
+
+- **Run Actor** -- Execute any Apify Actor with custom input parameters
+- **Web Scraping** -- Extract structured data from any website
+- **Social Media Scraping** -- Scrape profiles, posts, and engagement data
+  from Instagram, YouTube, Twitter/X, TikTok
+- **Search Scraping** -- Run Google, Bing, or other search engine queries
+  and collect results
+- **Data Export** -- Retrieve scraped datasets in JSON format
+```
+</Expandable>
+
+### MCP Skill: Canva Design
+
+<Expandable title="View Complete SKILL.md">
+```markdown
+---
+name: canva
+description: >
+  Create, search, autofill, and export designs from Canva.
+  Enables agents to generate visual content, fill templates
+  with brand assets, and export in various formats.
+type: mcp
+version: "1.0.0"
+mcp:
+  server_name: canva
+  transport: http
+  url: "https://mcp.canva.com/mcp"
+categories: [design, ui, assets, automation]
+---
+
+# Canva Connect
+
+## When to use
+
+Use Canva when you need to create, search, or export visual designs.
+This skill connects to the user's Canva account via OAuth and enables
+agents to generate presentations, social media posts, logos, and other
+visual content. It also supports autofilling templates with brand assets
+and exporting designs in various formats.
+
+## Instructions
+
+You have access to Canva through the Canva Connect MCP server.
+
+### Key capabilities
+
+- Create new designs (presentations, social posts, logos, etc.)
+- Autofill templates with content (text, images, brand elements)
+- Search existing designs in the user's Canva account
+- Export designs as PDF or image files
+
+### Best practices
+
+- Use templates when possible -- faster and more on-brand
+- When autofilling, match content to template placeholder names
+- Export in the format most useful for the pipeline (PNG for social,
+  PDF for documents)
+- Respect the user's Canva plan limitations (some features require
+  paid plans)
+
+### Requirements
+
+- User needs a Canva account (free or paid)
+- OAuth authorization is required on first use (browser popup)
+- Autofill templates require a Canva paid plan
+
+## Available operations
+
+- **Create Design** -- Generate new designs from scratch or templates
+- **Search Designs** -- Find existing designs in the user's Canva account
+- **Autofill Template** -- Fill template placeholders with text, images,
+  and brand elements
+- **Export Design** -- Export designs as PDF, PNG, JPG, or other formats
+- **Browse Templates** -- Search Canva's template library
+```
+</Expandable>
+
+### Script Skill: Image Optimizer
+
+<Expandable title="View Complete SKILL.md">
+```markdown
+---
+name: image-optimizer
+description: >
+  Resize, compress, and optimize images for social media platforms.
+  Automatically handles format conversion, quality settings, and
+  dimension requirements for Instagram, Twitter, LinkedIn, etc.
+type: script
+version: "1.0.0"
+script:
+  path: "scripts/optimize.js"
+  runtime: node
+  dependencies:
+    - sharp
+    - imagemin
+categories: [design, automation, social-media]
+---
+
+# Image Optimizer
+
+## When to use
+
+Use this skill when agents need to prepare images for social media
+publishing. It handles platform-specific requirements automatically:
+resizing, compression, format conversion, and quality optimization.
+
+## Instructions
+
+You have access to an image optimization script.
+
+### Key capabilities
+
+- Resize images to platform-specific dimensions
+- Compress images while maintaining visual quality
+- Convert between formats (PNG, JPG, WebP)
+- Batch process multiple images
+
+### Platform presets
+
+- **instagram-feed**: 1080x1080px, JPG, 85% quality
+- **instagram-story**: 1080x1920px, JPG, 85% quality
+- **twitter-post**: 1200x675px, JPG, 90% quality
+- **linkedin-post**: 1200x627px, JPG, 90% quality
+
+### Best practices
+
+- Use platform presets when available for consistent results
+- For custom sizes, maintain aspect ratio when possible
+- JPG for photos, PNG for graphics with transparency
+- Test output file size - aim for < 1MB for social platforms
+
+## Available operations
+
+Call the script with these parameters:
+
+```bash
+node skills/image-optimizer/scripts/optimize.js \
+  --input path/to/image.png \
+  --output path/to/optimized.jpg \
+  --preset instagram-feed
+
+# Or custom settings:
+node skills/image-optimizer/scripts/optimize.js \
+  --input path/to/image.png \
+  --output path/to/optimized.jpg \
+  --width 1200 \
+  --height 630 \
+  --quality 85
+```
+```
+</Expandable>
+
+### Prompt Skill: SEO Guidelines
+
+<Expandable title="View Complete SKILL.md">
+```markdown
+---
+name: seo-guidelines
+description: >
+  Best practices for SEO-optimized content creation.
+  Provides guidelines for keyword usage, meta descriptions,
+  heading structure, and technical SEO requirements.
+type: prompt
+version: "1.0.0"
+categories: [content, seo, writing]
+---
+
+# SEO Guidelines
+
+## When to use
+
+Use these guidelines when creating content that needs to rank in search
+engines: blog posts, landing pages, product descriptions, or any web content.
+
+## Instructions
+
+Follow these SEO best practices when creating content.
+
+### Keyword Strategy
+
+- **Primary keyword**: Use in title, first paragraph, and at least 2-3 times
+  in body (naturally, not forced)
+- **Secondary keywords**: 2-3 related terms, used naturally throughout
+- **Long-tail keywords**: Include question-based phrases users might search
+- **Avoid keyword stuffing**: 1-2% keyword density maximum
+
+### Title Optimization
+
+- Keep titles 50-60 characters (Google's display limit)
+- Include primary keyword near the beginning
+- Make it compelling - focus on user benefit, not just keywords
+- Use power words: "Complete", "Ultimate", "Essential", "Proven"
+- Include year for evergreen content: "Complete Guide (2026)"
+
+### Meta Description
+
+- 150-160 characters maximum
+- Include primary keyword
+- Write for humans, not just search engines
+- Include a call-to-action
+- Make it unique - never duplicate across pages
+
+### Content Structure
+
+- **H1**: One per page, includes primary keyword
+- **H2**: Section headers, include secondary keywords naturally
+- **H3**: Subsections under H2s
+- **Paragraphs**: Keep to 3-4 sentences maximum
+- **Lists**: Use bullet points or numbered lists for scannability
+
+### Internal Linking
+
+- Link to 2-5 related pages on your site
+- Use descriptive anchor text (not "click here")
+- Link to high-authority pages to pass link equity
+- Ensure all links are relevant to the content
+
+### Technical Requirements
+
+- **URL structure**: Keep URLs short, include primary keyword, use hyphens
+- **Image alt text**: Describe the image, include keywords when natural
+- **Loading speed**: Optimize images, minimize code, use caching
+- **Mobile-friendly**: Content must be readable on all devices
+
+### Content Quality Signals
+
+- Minimum 1,000 words for informational content
+- Answer the user's query completely in the first 200 words
+- Use data, statistics, and expert quotes when available
+- Update content regularly - add "Last updated: [date]" at the top
+- Include relevant images, videos, or infographics
+
+### Anti-Patterns
+
+1. **Thin content**: Pages with < 300 words rarely rank well
+2. **Duplicate content**: Never copy content from other pages
+3. **Keyword stuffing**: Unnatural repetition hurts rankings
+4. **Hidden text**: Any technique to hide keywords is penalized
+5. **Broken links**: Check all links before publishing
+```
+</Expandable>
+
+## Task File Format
+
+For agents using task-based execution, each task is defined in a separate markdown file in the agent's `tasks/` directory.
+
+### Task File Structure
+
+```markdown
+---
+task: "Task Name"
+order: 1
+input: |
+  - field_name: Description of expected input
+  - optional_field: Description (optional)
+output: |
+  - field_name: Description of produced output
+  - another_field: Description
+---
+
+# Task Name
+
+[Concise description of what this task does — 2-3 sentences]
+
+## Process
+
+1. [Concrete step with specific action]
+2. [Step with decision points]
+3. [Step with expected intermediate output]
+(Minimum 3 steps)
+
+## Output Format
+
+```yaml
+field: "..."
+nested:
+  subfield: "..."
+```
+
+## Output Example
+
+> Use as quality reference, not as rigid template.
+
+[Complete, realistic example — 15+ lines showing expected quality]
+
+## Quality Criteria
+
+- [ ] [Specific, measurable criterion]
+- [ ] [Specific, measurable criterion]
+- [ ] [Specific, measurable criterion]
+(Minimum 3 criteria)
+
+## Veto Conditions
+
+Reject and redo if ANY are true:
+1. [Specific condition that makes output unacceptable]
+2. [Specific condition that makes output unacceptable]
+(Minimum 2 conditions)
+```
+
+### Task Frontmatter
+
+<ParamField path="task" type="string" required>
+  Task name (used for identification and logging)
+</ParamField>
+
+<ParamField path="order" type="number" required>
+  Execution order within the agent (1-based)
+</ParamField>
+
+<ParamField path="input" type="string">
+  Description of expected inputs as YAML-formatted list
+</ParamField>
+
+<ParamField path="output" type="string">
+  Description of produced outputs as YAML-formatted list
+</ParamField>
+
+### Real Task Example
+
+<Expandable title="View Complete Task File">
+```markdown
+---
+task: "Find and Rank News"
+order: 1
+input:
+  - research_focus: Tema e período de pesquisa do usuário
+  - company_context: Perfil da empresa
+output:
+  - ranked_stories: Lista de 5-7 notícias ranqueadas
+---
+
+# Find and Rank News
+
+Recebe o tema e período de pesquisa e encontra as notícias mais
+interessantes e com maior potencial de engajamento para o público
+da empresa. Entrega uma lista ranqueada para o usuário escolher.
+
+## Process
+
+1. **Ler o research-focus.md.** Identificar o tema exato e o período
+   de pesquisa. Esta é a âncora de toda a busca.
+
+2. **Fazer pelo menos 3 buscas com ângulos diferentes.** Exemplos:
+   - Notícias recentes: "IA inteligência artificial notícias [período]"
+   - Dados e pesquisas: "IA relatório estudo dados [período]"
+   - Eventos e lançamentos: "IA ferramenta lançamento novidade [período]"
+
+3. **Coletar 10-15 candidatos.** Para cada resultado relevante,
+   registrar: título, fonte, URL, data, e um resumo de 1-2 linhas.
+
+4. **Avaliar cada candidato pelo potencial viral.** Atribuir
+   `viral_potential_score` de 1-10 baseado em:
+   - Surpresa/contraintuitivo (0-3 pts)
+   - Relevância para o público (0-3 pts)
+   - Acionabilidade (0-2 pts)
+   - Atualidade (0-2 pts)
+
+5. **Selecionar as 5-7 melhores.** Ordenar por score decrescente.
+
+6. **Salvar o resultado.** Escrever `output/ranked-stories.yaml`
+   com as notícias ranqueadas.
+
+## Output Format
+
+```yaml
+research_topic: "Tema pesquisado"
+time_range: "Período pesquisado"
+search_date: "YYYY-MM-DD"
+total_found: 12
+
+stories:
+  - rank: 1
+    title: "Título exato da notícia"
+    source: "Nome do veículo"
+    url: "https://url-da-noticia.com"
+    date: "YYYY-MM-DD"
+    summary: "Resumo em 2-3 linhas"
+    viral_potential_score: 9
+    why_interesting: "Por que essa notícia vai engajar"
+    key_data: "Dado mais forte da notícia"
+```
+
+## Output Example
+
+```yaml
+research_topic: "IA para empreendedores"
+time_range: "Últimas 24 horas"
+search_date: "2026-03-03"
+total_found: 11
+
+stories:
+  - rank: 1
+    title: "OpenAI lança GPT-5 com capacidade 10x superior"
+    source: "TechCrunch"
+    url: "https://techcrunch.com/2026/03/03/openai-gpt5"
+    date: "2026-03-03"
+    summary: "OpenAI lançou o GPT-5 com benchmark 10x acima do GPT-4."
+    viral_potential_score: 9
+    why_interesting: "Lançamento com dado concreto (10x)"
+    key_data: "10x superior em raciocínio matemático"
+```
+
+## Quality Criteria
+
+- [ ] Pelo menos 3 buscas realizadas com termos diferentes
+- [ ] Todas as URLs foram verificadas (acessíveis)
+- [ ] Cada notícia tem viral_potential_score com justificativa
+- [ ] As 5-7 notícias selecionadas são claramente distintas
+- [ ] Pelo menos uma notícia tem dado numérico verificável
+- [ ] Notícias estão ordenadas por score decrescente
+
+## Veto Conditions
+
+Rejeitar e refazer se:
+1. Menos de 5 notícias encontradas — refazer com termos mais amplos
+2. Todas as notícias são do mesmo veículo — diversificar
+3. Alguma URL não está acessível — substituir
+4. Notícias fora do período solicitado — refazer com filtro rigoroso
+```
+</Expandable>
+
+## Installing Skills
+
+Users install skills using OpenSquad commands:
+
+```bash
+# List installed skills
+/opensquad skills list
+
+# Install a skill from the catalog
+/opensquad skills install apify
+
+# Remove a skill
+/opensquad skills remove apify
+```
+
+During installation:
+1. OpenSquad fetches the SKILL.md from the catalog
+2. Creates `skills/{name}/` directory
+3. Writes SKILL.md to the directory
+4. For MCP skills: configures `.claude/settings.local.json`
+5. For script skills: installs dependencies
+6. Prompts for required environment variables
+
+## File Locations
+
+<ResponseField name="Installed Skills" type="path">
+  `skills/{skill-name}/SKILL.md` - Each skill in its own subdirectory
+</ResponseField>
+
+<ResponseField name="Skill Catalog" type="url">
+  `https://github.com/renatoasse/opensquad/tree/main/skills`
+</ResponseField>
+
+<ResponseField name="MCP Configuration" type="path">
+  `.claude/settings.local.json` - MCP server definitions
+</ResponseField>
+
+<ResponseField name="Environment Variables" type="path">
+  `.env` - API keys and credentials
+</ResponseField>
+
+## Best Practices
+
+### Skill Design
+
+1. **Single Responsibility** - Each skill should do one thing well
+2. **Clear When to Use** - Document specific scenarios for skill usage
+3. **Complete Instructions** - Agents should understand how to use the skill without trial and error
+4. **Error Guidance** - Document common issues and how to resolve them
+
+### Documentation Quality
+
+1. **Concrete Examples** - Show actual API calls, script commands, or configuration
+2. **Best Practices First** - Lead with the recommended approach
+3. **Anti-Patterns** - Document what NOT to do and why
+4. **Cost Awareness** - Warn about rate limits, API costs, or resource usage
+
+### Version Management
+
+1. **Semantic Versioning** - Use semver for version numbers
+2. **Breaking Changes** - Increment major version for incompatible changes
+3. **Changelog** - Document what changed between versions
+4. **Deprecation Warnings** - Give users time to migrate from old features
+
+## Next Steps
+
+<Card title="Agent YAML Format" icon="file-code" href="/development/agent-yaml-format">
+  Complete specification of agent frontmatter and markdown sections
+</Card>
+
+<Card title="Creating Agents" icon="robot" href="/development/creating-agents">
+  Learn how to create agents that use custom skills
+</Card>
+
+<Card title="Pipeline Configuration" icon="diagram-project" href="/development/pipeline-configuration">
+  Connect skilled agents together in automated workflows
+</Card>

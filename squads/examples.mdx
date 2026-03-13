@@ -1,0 +1,616 @@
+---
+title: Squad Examples
+description: Real-world squad configurations for content creation, data analysis, and automation
+icon: book-open
+---
+
+Explore production-ready squad examples across different domains. Each example includes the full squad structure, agent definitions, pipeline flow, and use case context.
+
+## Content Creation Squads
+
+### Example 1: Instagram Carousel from Trending News
+
+<Accordion title="Squad Overview" icon="instagram">
+**Purpose:** Research trending tech news, generate multiple content angles, and produce Instagram carousel posts optimized for engagement.
+
+**Performance Mode:** Alta Performance
+
+**Formats:** Instagram Feed (Carousels)
+
+**Agents:** 4
+- 🔍 Pedro Pesquisa (Researcher)
+- 💡 Ivan Ideia (Angle Generator)
+- 📱 Iago Instagram (Carousel Creator)
+- ✅ Renata Revisão (Quality Reviewer)
+
+**Pipeline Steps:** 9
+1. Research Focus (checkpoint)
+2. Research (subagent)
+3. Select Topic (checkpoint)
+4. Generate Angles (inline)
+5. Select Angle (checkpoint)
+6. Create Carousel (subagent)
+7. Approve Content (checkpoint)
+8. Review (inline)
+9. Final Approval (checkpoint)
+
+**Key Features:**
+- News-based content (user selects from trending stories)
+- Angle generation creates 5 emotional perspectives per story
+- Task decomposition: create → optimize → polish hooks (3 tasks)
+- Veto conditions catch weak hooks and long slides before review
+</Accordion>
+
+<CodeGroup>
+```yaml squad.yaml
+squad:
+  code: "tech-news-carousel"
+  name: "Tech News Carousel Creator"
+  description: "Researches trending tech topics and creates viral Instagram carousels"
+  icon: "📱"
+  version: "1.0.0"
+  performance_mode: "alta"
+
+skills:
+  - web_search
+  - web_fetch
+
+data:
+  - pipeline/data/research-brief.md
+  - pipeline/data/domain-framework.md
+  - pipeline/data/quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/anti-patterns.md
+  - pipeline/data/tone-of-voice.md
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+  steps:
+    - step-01-research-focus.md
+    - step-02-research.md
+    - step-03-select-topic.md
+    - step-04-generate-angles.md
+    - step-05-select-angle.md
+    - step-06-create-carousel.md
+    - step-07-approve-content.md
+    - step-08-review.md
+    - step-09-final-approval.md
+```
+
+```csv squad-party.csv
+path,displayName,icon
+./agents/pedro-pesquisa.agent.md,Pedro Pesquisa,🔍
+./agents/ivan-ideia.agent.md,Ivan Ideia,💡
+./agents/iago-instagram.agent.md,Iago Instagram,📱
+./agents/renata-revisao.agent.md,Renata Revisão,✅
+```
+
+```yaml step-06-create-carousel.md
+---
+execution: subagent
+agent: iago-instagram
+format: instagram-feed
+inputFile: squads/tech-news-carousel/pipeline/data/selected-angle.yaml
+outputFile: squads/tech-news-carousel/output/instagram-carousel.md
+model_tier: powerful
+---
+
+# Step 06: Create Carousel
+
+## Context Loading
+
+Load these files before executing:
+- `pipeline/data/selected-angle.yaml` - Chosen emotional angle
+- `pipeline/data/selected-topic.md` - Source story with key facts
+- `pipeline/data/tone-of-voice.md` - Brand voice guidelines
+- `pipeline/data/output-examples.md` - Real carousel examples
+
+## Instructions
+
+### Process
+1. Read the selected angle and source story
+2. Execute task 1: Create carousel draft (7-10 slides)
+3. Execute task 2: Optimize for Instagram algorithm
+4. Execute task 3: Polish hooks for maximum stop-the-scroll impact
+
+[... Rest of step instructions]
+```
+</CodeGroup>
+
+**When to use this pattern:**
+- News-based content creation
+- Social media posts requiring trend awareness
+- Content that needs multiple angle options
+- High-engagement formats (carousels, threads)
+
+---
+
+### Example 2: Multi-Platform Content Squad
+
+<Accordion title="Squad Overview" icon="globe">
+**Purpose:** Generate cohesive content across Instagram, LinkedIn, and Twitter from a single source (blog post, video, or news story).
+
+**Performance Mode:** Alta Performance
+
+**Formats:** Instagram Feed, LinkedIn Post, Twitter Thread
+
+**Agents:** 6
+- 🔍 Rita Research (Content Analyst)
+- 💡 Adam Angle (Angle Generator)
+- 📱 Ivy Instagram (Instagram Creator)
+- 📝 Luna LinkedIn (LinkedIn Creator)
+- 🐦 Tina Twitter (Twitter Creator)
+- ✅ Victor Verdict (Multi-Platform Reviewer)
+
+**Pipeline Steps:** 10
+1. Source Input (checkpoint - user provides URL or uploads content)
+2. Analyze Source (subagent - extract key insights)
+3. Generate Angles (inline - 5 angles)
+4. Select Angle (checkpoint)
+5. Create Content (parallel subagents - Ivy + Luna + Tina)
+6. Approve Content (checkpoint - review all 3 outputs)
+7. Review (inline - Victor evaluates all platforms)
+8. Final Approval (checkpoint)
+
+**Key Features:**
+- Parallel execution: 3 creators work simultaneously
+- Cross-platform consistency (same angle, platform-specific execution)
+- Single approval checkpoint for all outputs
+- Reviewer applies both global and platform-specific criteria
+</Accordion>
+
+<CodeGroup>
+```yaml squad.yaml
+squad:
+  code: "multi-platform-content"
+  name: "Multi-Platform Content Creator"
+  description: "Adapts single source into Instagram, LinkedIn, and Twitter content"
+  icon: "🌐"
+  version: "1.0.0"
+  performance_mode: "alta"
+
+skills:
+  - web_search
+  - web_fetch
+
+data:
+  - pipeline/data/research-brief.md
+  - pipeline/data/platform-comparison.md
+  - pipeline/data/cross-platform-quality-criteria.md
+  - pipeline/data/output-examples.md
+  - pipeline/data/tone-of-voice.md
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+  steps:
+    - step-01-source-input.md
+    - step-02-analyze-source.md
+    - step-03-generate-angles.md
+    - step-04-select-angle.md
+    - step-05-create-content.md  # Parallel: Ivy + Luna + Tina
+    - step-06-approve-content.md
+    - step-07-review.md
+    - step-08-final-approval.md
+```
+
+```yaml step-05-create-content.md (Parallel)
+---
+execution: subagent
+agents:  # Multiple agents execute in parallel
+  - ivy-instagram
+  - luna-linkedin
+  - tina-twitter
+inputFile: squads/multi-platform-content/pipeline/data/selected-angle.yaml
+outputFiles:
+  - squads/multi-platform-content/output/instagram-post.md
+  - squads/multi-platform-content/output/linkedin-post.md
+  - squads/multi-platform-content/output/twitter-thread.md
+model_tier: powerful
+---
+
+# Step 05: Create Content (Parallel)
+
+## Context Loading
+
+All agents load:
+- `pipeline/data/selected-angle.yaml` - Chosen angle
+- `pipeline/data/source-insights.md` - Key insights from source
+- `pipeline/data/tone-of-voice.md` - Brand voice
+
+Per-agent format injection:
+- Ivy: instagram-feed best practices
+- Luna: linkedin-post best practices
+- Tina: twitter-thread best practices
+
+## Instructions
+
+### Process
+1. Each agent creates content for their platform
+2. Maintain angle consistency across platforms
+3. Adapt structure to platform algorithm
+4. Save outputs to respective paths
+
+[... Rest of instructions]
+```
+</CodeGroup>
+
+**When to use this pattern:**
+- Repurposing content across platforms
+- Maintaining brand consistency
+- Efficient multi-channel publishing
+- Content marketing at scale
+
+---
+
+## Data Analysis Squads
+
+### Example 3: CSV Data Analysis and Insights
+
+<Accordion title="Squad Overview" icon="chart-line">
+**Purpose:** Analyze uploaded CSV data, identify patterns and anomalies, generate visualizations, and produce an executive report.
+
+**Performance Mode:** Alta Performance
+
+**Agents:** 4
+- 📊 Dante Dados (Data Analyst)
+- 📈 Ines Insight (Insight Generator)
+- 📝 Rita Report (Report Writer)
+- ✅ Vera Veredicto (Quality Reviewer)
+
+**Pipeline Steps:** 8
+1. Upload Data (checkpoint - user uploads CSV)
+2. Analyze Data (subagent - statistical analysis, patterns, anomalies)
+3. Generate Insights (subagent - interpret findings, identify trends)
+4. Select Focus Areas (checkpoint - user chooses which insights to develop)
+5. Create Report (subagent - write executive summary with visualizations)
+6. Approve Draft (checkpoint)
+7. Review (inline - validate accuracy, clarity, actionability)
+8. Final Approval (checkpoint)
+
+**Key Features:**
+- Data-driven (no web research needed)
+- Statistical analysis with anomaly detection
+- Visualization generation (charts, graphs)
+- Executive-friendly reporting
+</Accordion>
+
+<CodeGroup>
+```yaml squad.yaml
+squad:
+  code: "csv-analysis"
+  name: "CSV Data Analyzer"
+  description: "Analyzes CSV data and generates insight reports"
+  icon: "📊"
+  version: "1.0.0"
+  performance_mode: "alta"
+
+skills:
+  - python-data-analysis  # Custom skill for pandas, matplotlib
+
+data:
+  - pipeline/data/analysis-frameworks.md
+  - pipeline/data/visualization-best-practices.md
+  - pipeline/data/report-templates.md
+  - pipeline/data/quality-criteria.md
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+  steps:
+    - step-01-upload-data.md
+    - step-02-analyze-data.md
+    - step-03-generate-insights.md
+    - step-04-select-focus.md
+    - step-05-create-report.md
+    - step-06-approve-draft.md
+    - step-07-review.md
+    - step-08-final-approval.md
+```
+
+```yaml step-02-analyze-data.md
+---
+execution: subagent
+agent: dante-dados
+inputFile: squads/csv-analysis/pipeline/data/uploaded-data.csv
+outputFile: squads/csv-analysis/output/analysis-report.json
+model_tier: powerful
+---
+
+# Step 02: Analyze Data
+
+## Context Loading
+
+Load these files before executing:
+- `pipeline/data/uploaded-data.csv` - User's dataset
+- `pipeline/data/analysis-frameworks.md` - Statistical methods
+
+## Instructions
+
+### Process
+1. Load CSV and validate schema
+2. Execute task 1: Descriptive statistics (mean, median, std dev, quartiles)
+3. Execute task 2: Identify patterns (correlations, trends over time)
+4. Execute task 3: Detect anomalies (outliers, unexpected values)
+5. Output structured JSON with all findings
+
+## Output Format
+
+```json
+{
+  "schema": { "columns": [...], "row_count": 1234 },
+  "statistics": { ... },
+  "patterns": [ ... ],
+  "anomalies": [ ... ]
+}
+```
+
+[... Rest of step instructions]
+```
+</CodeGroup>
+
+**When to use this pattern:**
+- Business intelligence reporting
+- Sales/marketing data analysis
+- Performance metrics evaluation
+- Anomaly detection and alerting
+
+---
+
+## Automation Squads
+
+### Example 4: Daily News Digest Automation
+
+<Accordion title="Squad Overview" icon="newspaper">
+**Purpose:** Monitor news sources daily, filter by relevance, summarize top stories, and send an email digest.
+
+**Performance Mode:** Econômico (efficiency optimized for daily runs)
+
+**Agents:** 4
+- 🔍 Nancy News (News Monitor)
+- ✂️ Sam Summarize (Summarizer)
+- ✉️ Emily Email (Email Composer)
+- 📬 Danny Deliver (Email Sender)
+
+**Pipeline Steps:** 6
+1. Configure Monitoring (checkpoint - first run only, sets topics and sources)
+2. Fetch News (subagent - web search with time filter)
+3. Summarize Stories (subagent - condense articles)
+4. Compose Digest (subagent - format email with links)
+5. Approve Draft (checkpoint - manual approval before sending)
+6. Send Email (subagent - uses email skill)
+
+**Key Features:**
+- Scheduled execution (cron job or manual trigger)
+- Econômico mode for efficiency (runs daily, lower token cost)
+- Email skill integration
+- Persistent configuration (topics stored in squad memory)
+</Accordion>
+
+<CodeGroup>
+```yaml squad.yaml
+squad:
+  code: "daily-news-digest"
+  name: "Daily News Digest"
+  description: "Monitors news and sends daily email summaries"
+  icon: "📰"
+  version: "1.0.0"
+  performance_mode: "economico"
+
+skills:
+  - web_search
+  - web_fetch
+  - sendgrid-email  # Custom MCP skill for sending emails
+
+data:
+  - pipeline/data/monitoring-config.yaml  # Topics, sources, recipients
+  - pipeline/data/email-templates.md
+  - pipeline/data/summarization-guidelines.md
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+  steps:
+    - step-01-configure-monitoring.md  # First run only
+    - step-02-fetch-news.md
+    - step-03-summarize-stories.md
+    - step-04-compose-digest.md
+    - step-05-approve-draft.md
+    - step-06-send-email.md
+```
+
+```yaml step-06-send-email.md
+---
+execution: subagent
+agent: danny-deliver
+inputFile: squads/daily-news-digest/output/email-digest.html
+outputFile: squads/daily-news-digest/output/delivery-log.json
+model_tier: fast  # Simple task, use fast model
+---
+
+# Step 06: Send Email
+
+## Context Loading
+
+Load these files before executing:
+- `squads/daily-news-digest/output/email-digest.html` - Composed email
+- `pipeline/data/monitoring-config.yaml` - Recipient list
+- `skills/sendgrid-email/SKILL.md` - Email sending instructions
+
+## Instructions
+
+### Process
+1. Read email content and recipient list
+2. Use SendGrid skill to send digest:
+   - From: noreply@yourcompany.com
+   - To: recipients from config
+   - Subject: "Daily Tech Digest - {date}"
+   - Body: HTML from email-digest.html
+3. Log delivery status (sent, failed, bounced)
+4. Save log to output
+
+[... Rest of instructions]
+```
+</CodeGroup>
+
+**When to use this pattern:**
+- Recurring content generation
+- Monitoring and alerting
+- Automated reporting
+- Newsletter creation
+
+**Scheduling the squad (example cron job):**
+
+```bash
+# crontab -e
+# Run daily at 8 AM
+0 8 * * * cd /path/to/project && /opensquad run daily-news-digest
+```
+
+---
+
+## Advanced Patterns
+
+### Example 5: Multi-Squad Workflow (Chained Execution)
+
+<Accordion title="Workflow Overview" icon="diagram-project">
+**Purpose:** Chain multiple squads together for complex workflows.
+
+**Use Case:** Content production pipeline
+1. **Research Squad** - Gathers industry data and trends
+2. **Content Squad** - Produces articles, posts, threads from research
+3. **Distribution Squad** - Publishes content across platforms
+
+Each squad's output becomes the next squad's input.
+</Accordion>
+
+<CodeGroup>
+```bash Sequential Execution
+#!/bin/bash
+# run-content-pipeline.sh
+
+# Step 1: Research
+/opensquad run industry-research
+
+if [ $? -ne 0 ]; then
+  echo "Research squad failed. Aborting."
+  exit 1
+fi
+
+# Step 2: Content Creation (reads research output)
+/opensquad run content-production
+
+if [ $? -ne 0 ]; then
+  echo "Content squad failed. Aborting."
+  exit 1
+fi
+
+# Step 3: Distribution (reads content output)
+/opensquad run content-distribution
+
+if [ $? -ne 0 ]; then
+  echo "Distribution squad failed. Aborting."
+  exit 1
+fi
+
+echo "✅ Full pipeline completed!"
+```
+
+```yaml content-production squad.yaml (reads research output)
+squad:
+  code: "content-production"
+  name: "Content Producer"
+  description: "Creates content from research squad outputs"
+  icon: "✍️"
+  version: "1.0.0"
+
+pipeline:
+  entry: pipeline/pipeline.yaml
+  steps:
+    - step-01-load-research.md  # Reads: squads/industry-research/output/latest/research-findings.md
+    - step-02-generate-content-ideas.md
+    - step-03-select-ideas.md
+    - step-04-write-content.md
+    - step-05-review.md
+    - step-06-final-approval.md
+```
+</CodeGroup>
+
+**Benefits:**
+- Separation of concerns (each squad has one purpose)
+- Reusable squads (run research squad independently)
+- Easier debugging (isolate failures to specific squad)
+- Parallel development (different teams work on different squads)
+
+---
+
+## Comparison Table
+
+| Squad Type | Agents | Steps | Performance Mode | Skills Needed | Use Case |
+|------------|--------|-------|------------------|---------------|----------|
+| Instagram Carousel | 4 | 9 | Alta | web_search, web_fetch | Trending news content |
+| Multi-Platform | 6 | 8 | Alta | web_search, web_fetch | Content repurposing |
+| CSV Analysis | 4 | 8 | Alta | python-data-analysis | Business intelligence |
+| News Digest | 4 | 6 | Econômico | web_search, sendgrid-email | Daily automation |
+| Multi-Squad Workflow | 3 squads | Varies | Mixed | Varies | Complex pipelines |
+
+## Templates and Customization
+
+<CardGroup cols={2}>
+  <Card title="Content Squad Template" icon="file-lines">
+    **Researcher → Strategist → Creator → Reviewer**
+    
+    Adapt for:
+    - Blog posts
+    - YouTube scripts
+    - Email campaigns
+    - Whitepapers
+  </Card>
+  
+  <Card title="Analysis Squad Template" icon="chart-simple">
+    **Analyst → Insight Generator → Report Writer → Reviewer**
+    
+    Adapt for:
+    - Financial analysis
+    - Marketing metrics
+    - User behavior analysis
+    - Competitive intelligence
+  </Card>
+  
+  <Card title="Automation Squad Template" icon="robot">
+    **Monitor → Processor → Executor → Notifier**
+    
+    Adapt for:
+    - Social media monitoring
+    - Lead generation
+    - Data pipelines
+    - Alert systems
+  </Card>
+  
+  <Card title="Support Squad Template" icon="headset">
+    **Investigator → Responder → Escalator**
+    
+    Adapt for:
+    - Customer support
+    - Technical troubleshooting
+    - Documentation generation
+    - FAQ creation
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Create Your Squad" icon="wand-magic-sparkles" href="/squads/creating">
+    Use these examples as inspiration to design your own squad
+  </Card>
+  
+  <Card title="Edit Existing Squads" icon="pen-to-square" href="/squads/editing">
+    Adapt these patterns to your specific needs
+  </Card>
+  
+  <Card title="Agent Definitions" icon="robot" href="/concepts/agents">
+    Understand how agents work and communicate
+  </Card>
+  
+  <Card title="Pipeline Configuration" icon="diagram-project" href="/development/pipeline-configuration">
+    Advanced pipeline patterns and optimization
+  </Card>
+</CardGroup>

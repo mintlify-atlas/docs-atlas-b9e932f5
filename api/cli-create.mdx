@@ -1,0 +1,347 @@
+---
+title: 'npx opensquad create'
+description: 'Create a new multi-agent squad'
+icon: 'users'
+---
+
+## Overview
+
+The `create` command is used within Claude Code, Cursor, or other supported IDEs to create a new multi-agent squad. This command is not available as a standalone CLI command but is invoked through the `/opensquad` skill interface.
+
+<Note>
+This command must be run from within your IDE's chat interface, not from the terminal.
+</Note>
+
+## Usage
+
+### In Claude Code
+
+```
+/opensquad create
+```
+
+### In Cursor
+
+```
+/opensquad create
+```
+
+### In VS Code + Copilot
+
+```
+Ctrl+Alt+I (open Copilot Chat)
+/opensquad create
+```
+
+## How It Works
+
+When you run `/opensquad create`, the **Architect** agent is invoked to guide you through squad creation:
+
+1. **Squad Definition**: You describe what you want the squad to do
+2. **Agent Selection**: The Architect suggests appropriate agents for your task
+3. **Pipeline Design**: A YAML configuration is created defining the workflow
+4. **Investigation Phase** (optional): The **Sherlock** agent can analyze reference profiles
+5. **YAML Generation**: The squad configuration is saved to `squads/<name>/squad.yaml`
+
+## Squad Configuration
+
+The create process generates a YAML file like this:
+
+```yaml squads/instagram-content/squad.yaml
+name: Instagram Content Generator
+description: Creates Instagram posts with AI-generated images
+
+agents:
+  - name: Strategist
+    role: Content strategy and planning
+    tools:
+      - web-search
+      - calculator
+
+  - name: Designer  
+    role: Visual content creation
+    tools:
+      - image-generator
+      - image-editor
+
+  - name: Copywriter
+    role: Caption and hashtag creation
+    tools:
+      - web-search
+
+pipeline:
+  - agent: Strategist
+    task: |
+      Analyze trending topics and create content calendar
+    checkpoint: true
+
+  - agent: Designer
+    task: |
+      Generate Instagram post image based on strategy
+    depends_on: [Strategist]
+
+  - agent: Copywriter  
+    task: |
+      Write engaging caption and relevant hashtags
+    depends_on: [Designer]
+    output: squads/instagram-content/output/
+```
+
+## Squad Directory Structure
+
+After creation, your squad directory looks like this:
+
+```
+squads/
+└── instagram-content/
+    ├── squad.yaml
+    ├── _investigations/
+    │   ├── @competitor_profile.md
+    │   └── @successful_posts.md
+    └── output/
+        ├── post_001.jpg
+        └── caption_001.md
+```
+
+## Investigation Phase
+
+During squad creation, you can request content investigations:
+
+```
+/opensquad create
+
+> I want to create Instagram content like @natgeo
+```
+
+The Architect will invoke **Sherlock** to:
+
+1. Open the profile in a persistent browser session
+2. Analyze content patterns, tone, visual style
+3. Save the analysis to `squads/<name>/_investigations/@natgeo.md`
+4. Use these insights to configure your squad
+
+<Note>
+Investigations use a persistent Playwright browser profile stored in `_opensquad/_browser_profile/`. You'll log in once and sessions are reused.
+</Note>
+
+## Supported Platforms for Investigation
+
+- **Instagram**: Profile analysis, content patterns, engagement metrics
+- **YouTube**: Channel analysis, video topics, thumbnails
+- **Twitter/X**: Tweet analysis, thread structures, engagement
+- **LinkedIn**: Post styles, article topics, professional tone
+
+## Agent Persona Switching
+
+Squads can use two types of agent invocation:
+
+### Inline (Persona Switching)
+
+```yaml
+pipeline:
+  - agent: Strategist
+    task: Create content plan
+    mode: inline
+```
+
+The main agent "becomes" the Strategist inline in the conversation.
+
+### Subagent (Background)
+
+```yaml
+pipeline:
+  - agent: Researcher
+    task: Gather competitive data
+    mode: subagent
+```
+
+A separate agent runs in the background and returns results.
+
+## Checkpoints
+
+Add checkpoints to pause execution for user approval:
+
+```yaml
+pipeline:
+  - agent: Designer
+    task: Create logo mockup
+    checkpoint: true  # Waits for user approval
+
+  - agent: Brand Guide
+    task: Generate brand guidelines
+    depends_on: [Designer]
+```
+
+When a checkpoint is reached:
+
+```
+✋ Checkpoint: Review Designer output
+
+Output: squads/branding/output/logo_v1.png
+
+Approve and continue? (yes/no)
+→
+```
+
+## Memory and Context
+
+All squads automatically have access to:
+
+- **Company context**: `_opensquad/_memory/company.md`
+- **User preferences**: `_opensquad/_memory/preferences.md`
+- **Squad investigations**: `squads/<name>/_investigations/*.md`
+
+The Architect will prompt you to fill out `company.md` on first use:
+
+```markdown _opensquad/_memory/company.md
+# Company Profile
+
+**Company Name:** Acme Digital Marketing
+**Industry:** SaaS Marketing
+**Target Audience:** B2B tech companies
+**Brand Voice:** Professional, data-driven, approachable
+**Key Products:** Marketing automation platform
+```
+
+## Editing Squads
+
+After creation, you can:
+
+1. **Edit via IDE**:
+   ```
+   /opensquad edit instagram-content
+   ```
+
+2. **Manually edit YAML**:
+   ```bash
+   code squads/instagram-content/squad.yaml
+   ```
+
+3. **Delete a squad**:
+   ```bash
+   rm -rf squads/instagram-content/
+   ```
+
+## Best Practices
+
+### Name Your Squad Clearly
+
+```yaml
+name: LinkedIn Thought Leadership Pipeline
+description: Weekly LinkedIn articles with data visualizations
+```
+
+Use descriptive names that indicate the content type and platform.
+
+### Use Dependencies
+
+```yaml
+pipeline:
+  - agent: Researcher
+    task: Gather industry data
+    
+  - agent: Analyst
+    task: Create charts and insights
+    depends_on: [Researcher]
+    
+  - agent: Writer
+    task: Write article draft
+    depends_on: [Analyst]
+```
+
+Dependencies ensure agents run in the correct order.
+
+### Add Output Paths
+
+```yaml
+pipeline:
+  - agent: Writer
+    task: Generate blog post
+    output: squads/blog/output/
+```
+
+Explicitly set output directories to organize generated content.
+
+## Common Patterns
+
+### Content Creation Squad
+
+```yaml
+name: Blog Post Factory
+agents:
+  - SEO Strategist
+  - Researcher  
+  - Writer
+  - Editor
+
+pipeline:
+  - agent: SEO Strategist
+    task: Keyword research and topic selection
+  - agent: Researcher
+    task: Gather sources and data
+  - agent: Writer
+    task: Write blog post draft
+  - agent: Editor
+    task: Review and finalize
+    checkpoint: true
+```
+
+### Social Media Squad
+
+```yaml
+name: Multi-Platform Social Campaign
+agents:
+  - Strategist
+  - Designer
+  - Instagram Copywriter
+  - LinkedIn Copywriter
+  - Twitter Copywriter
+
+pipeline:
+  - agent: Strategist
+    task: Create campaign strategy
+  - agent: Designer
+    task: Create base visual assets
+  - agent: Instagram Copywriter
+    task: Write Instagram captions
+    mode: parallel
+  - agent: LinkedIn Copywriter
+    task: Write LinkedIn posts
+    mode: parallel
+  - agent: Twitter Copywriter
+    task: Write Twitter threads
+    mode: parallel
+```
+
+### Data Analysis Squad
+
+```yaml
+name: Weekly Analytics Report
+agents:
+  - Data Collector
+  - Analyst
+  - Visualizer
+  - Report Writer
+
+pipeline:
+  - agent: Data Collector
+    task: Pull data from APIs
+    tools:
+      - api-client
+  - agent: Analyst
+    task: Calculate KPIs and trends
+    tools:
+      - calculator
+      - python
+  - agent: Visualizer
+    task: Create charts and dashboards
+  - agent: Report Writer
+    task: Generate executive summary
+    output: squads/analytics/output/
+```
+
+## Related Commands
+
+- [npx opensquad run](/api/cli-run) - Execute a squad
+- [npx opensquad skills](/api/cli-skills) - Manage available skills for agents
+- [npx opensquad agents](/api/cli-agents) - Manage predefined agents
