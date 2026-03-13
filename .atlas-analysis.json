@@ -1,0 +1,114 @@
+{
+  "projectType": "framework",
+  "projectName": "OpenSquad",
+  "projectDescription": "Multi-agent orchestration framework that creates AI squads working together automatically",
+  "theme": "aspen",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/squads",
+              "concepts/agents",
+              "concepts/skills",
+              "concepts/pipelines",
+              "concepts/virtual-office"
+            ]
+          },
+          {
+            "group": "Building Squads",
+            "pages": [
+              "squads/creating",
+              "squads/running",
+              "squads/editing",
+              "squads/examples"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/creating-agents",
+              "development/creating-skills",
+              "development/agent-yaml-format",
+              "development/pipeline-configuration"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "advanced/ide-integration",
+              "advanced/best-practices",
+              "advanced/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "CLI Commands",
+            "pages": [
+              "api/cli-init",
+              "api/cli-create",
+              "api/cli-run",
+              "api/cli-skills",
+              "api/cli-agents"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "api/squad-yaml",
+              "api/agent-yaml",
+              "api/pipeline-yaml",
+              "api/skill-format"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Multi-agent orchestration with specialized roles",
+    "Natural language squad creation via Architect agent",
+    "Plugin system with installable skills",
+    "Pipeline execution with checkpoints",
+    "Visual dashboard (Virtual Office)",
+    "Support for multiple IDEs (Claude Code, Cursor, VS Code, etc.)",
+    "Agent communication via persona switching and subagents",
+    "Persistent memory and company context",
+    "Browser automation with session persistence"
+  ],
+  "publicApiSurface": [
+    "npx opensquad init",
+    "npx opensquad create",
+    "npx opensquad run <name>",
+    "npx opensquad list",
+    "npx opensquad edit <name>",
+    "npx opensquad install <skill>",
+    "npx opensquad uninstall <skill>",
+    "npx opensquad skills",
+    "npx opensquad agents",
+    "npx opensquad update",
+    "/opensquad (IDE command)",
+    "agent.yaml format",
+    "squad.yaml format",
+    "pipeline.yaml format",
+    "SKILL.md format"
+  ]
+}
